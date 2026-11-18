@@ -286,14 +286,14 @@ local planBuilders = {
 -- ---------------------------------------------------------------- the name tag
 
 --[[ The tag is the judge's criterion 2, so it is built for one job: being read.
-	Layout, top to bottom, in a 300x124 offset-pixel card:
+	Layout, top to bottom, in a 220x124 offset-pixel card:
 	  NAME      big FredokaOne, white with a black outline
 	  RARITY    a solid rarity-coloured chip on the left, "$N/s" on the right
 	  MUTATION  a coloured line, only when the character carries one
 
 	Width matters as much as height: an offset-sized BillboardGui is a CONSTANT
 	pixel size at every distance, so a 440 px card on a 1280 px capture is a third
-	of the frame and twelve of them bury each other. 300 px is the largest card
+	of the frame and twelve of them bury each other. 220 px is the largest card
 	that still lets a packed den read as separate labels.
 ]]
 local function buildNameTag(model, entry, mutationName, padIndex)
