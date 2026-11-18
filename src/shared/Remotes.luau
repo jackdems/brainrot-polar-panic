@@ -24,6 +24,7 @@ Remotes.events = {
 	"RequestBuyUpgrade",
 	"RequestRebirth",
 	"RequestDrop",
+	"RequestDevGrant", -- Studio-only: seeds cash so a builder can photograph a den
 	"RequestSnapshot", -- fired with no args; answered on StateChanged
 }
 

@@ -27,6 +27,7 @@ NetworkGuard.cooldowns = {
 	RequestBuyLock = 0.4,
 	RequestBuyUpgrade = 0.4,
 	RequestRebirth = 1.5,
+	RequestDevGrant = 0.5,
 	RequestSnapshot = 0.2,
 }
 
@@ -60,10 +61,30 @@ function NetworkGuard.init(context)
 		end
 	end
 
+	NetworkGuard.register("RequestDevGrant", NetworkGuard.devGrant)
+
 	print("[NetworkGuard] wired " .. #remotes:GetChildren() .. " remotes")
 end
 
--- Services register their own named handler.
+-- ---------------------------------------------------------------- dev grant
+
+-- Studio-only affordance: the recorded build needs a den full of characters to
+-- photograph, and the only honest way to get there is to pay for them. This is
+-- refused outside Studio, so a live server never sees it.
+function NetworkGuard.devGrant(player, record, amount)
+	local isStudio = game:GetService("RunService"):IsStudio()
+	if not isStudio then
+		return
+	end
+	local value = NetworkGuard.asNumber(amount, 0, 50000000)
+	if not value then
+		return
+	end
+	ServerState.addCash(record, value)
+	NetworkGuard.notify(player, string.format("Studio grant: +$%d", math.floor(value)), Color3.fromRGB(126, 255, 176))
+	NetworkGuard.pushState(player)
+end
+
 function NetworkGuard.register(name, handler)
 	handlers[name] = handler
 end

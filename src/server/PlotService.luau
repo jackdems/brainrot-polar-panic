@@ -112,12 +112,12 @@ end
 
 -- ---------------------------------------------------------------- placement
 
-local function buildPadModel(pad, entry, mutationName)
+local function buildPadModel(pad, entry, mutationName, baseInfo)
 	local model = CharacterFactory.build(entry, { mutation = mutationName })
 	model.Name = "Placed_" .. entry.name
 	model:PivotTo(CFrame.new(pad.position + Vector3.new(0, 3.2, 0)))
-	model.Parent = workspace
-	model:SetAttribute("PlacedBy", nil)
+	-- Parent into the den so the whole plot reads as one model in the tree.
+	model.Parent = (baseInfo and baseInfo.model) or workspace
 	return model
 end
 
@@ -165,9 +165,11 @@ function PlotService.tryPlaceCharacter(player, record)
 		if claim.padModels[padIndex] then
 			claim.padModels[padIndex]:Destroy()
 		end
-		local model = buildPadModel(pad, entry, carried.mutation)
+		local model = buildPadModel(pad, entry, carried.mutation, baseInfo)
 		model:SetAttribute("PlacedBy", player.UserId)
-		model:SetAttribute("PadIndex", padIndex)
+		-- The placed character is a Model, not a socket: no PadIndex attribute here,
+		-- so socket counting in the tree stays honest.
+		model:SetAttribute("OnPad", padIndex)
 		claim.padModels[padIndex] = model
 	end
 
