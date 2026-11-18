@@ -285,18 +285,15 @@ local planBuilders = {
 
 -- ---------------------------------------------------------------- scale clamp
 
--- Uniformly rescale the model so its height is at most maxHeight studs.
+-- Uniformly rescale the model so EVERY axis is at most maxHeight studs.
 -- Triggered when any axis of the model's extents exceeds 8 studs.
 local function clampModelScale(model, maxHeight)
 	local extents = model:GetExtentsSize()
 	local maxAxis = math.max(extents.X, extents.Y, extents.Z)
 	if maxAxis > 8 then
-		local currentHeight = extents.Y
-		if currentHeight > 0 then
-			local scaleFactor = maxHeight / currentHeight
-			model:ScaleTo(scaleFactor)
-			return scaleFactor
-		end
+		local scaleFactor = maxHeight / maxAxis
+		model:ScaleTo(scaleFactor)
+		return scaleFactor
 	end
 	return 1
 end
@@ -580,9 +577,9 @@ function CharacterFactory.build(entry, options)
 		end
 
 		-- CHARACTER SCALE CAP: clamp every body plan to at most 7 studs tall.
-		-- If any axis of the assembled model exceeds 8 studs, rescale uniformly
-		-- so height becomes 7. Applies to EVERY body plan so no future cast entry
-		-- can regress.
+			-- If any axis of the assembled model exceeds 8 studs, rescale uniformly
+			-- so the largest axis becomes 7. Applies to EVERY body plan so no future
+			-- cast entry can regress.
 		local clampFactor = clampModelScale(model, 7)
 		if clampFactor ~= 1 then
 			height *= clampFactor
