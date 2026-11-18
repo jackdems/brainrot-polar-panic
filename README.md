@@ -1,27 +1,34 @@
 # Brainrot Polar Panic!
 
-A bright arctic island where players collect absurd original "brainrot" characters that each earn money per second, place them on pads at their base, and climb a rarity ladder with mutations, eggs, rebirths — while an Ice Wall sweeps the island every few minutes and thief NPCs (and other players) try to steal the placed characters.
+[![make.fun · roblox-brainrot-01](https://make.fun/badge/roblox-brainrot-01.svg)](https://make.fun/bounty/roblox-brainrot-01?utm_source=github&utm_medium=readme&utm_campaign=roblox-brainrot-01)
+[![rank](https://make.fun/badge/roblox-brainrot-01/jackdems/brainrot-polar-panic/rank.svg)](https://make.fun/bounty/roblox-brainrot-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=roblox-brainrot-01)
+[![reward](https://make.fun/badge/roblox-brainrot-01/jackdems/brainrot-polar-panic/reward.svg)](https://make.fun/bounty/roblox-brainrot-01?utm_source=github&utm_medium=readme&utm_campaign=roblox-brainrot-01)
 
-## Run locally
+A bright arctic island where players collect absurd original "brainrot" characters that
+each earn money per second, place them on pads at their den, and climb a rarity ladder
+with mutations, eggs and rebirths — while an Ice Wall sweeps the island every few
+minutes and thief yetis (and other players) try to steal the placed characters.
 
-```bash
-# Requires Rojo 7.7.1 (included at tools/rojo/rojo.exe)
-cd repo
-E:/MAKEFUNPROJECT/Brainrot-Game/tools/rojo/rojo.exe build default.project.json --output game.rbxl
+38 original characters across seven rarities, four egg tiers, Gold / Diamond / Neon /
+Galaxy mutations, base locks, speed boots, egg luck, a Golden Blizzard event and five
+rebirth tiers — all built procedurally in Luau by an AI agent working in Roblox Studio.
+
+## Run it
+
+```sh
+rojo build default.project.json --output game.rbxl
 ```
 
-Open `game.rbxl` in Roblox Studio and playtest.
+Then open `game.rbxl` in Roblox Studio and press Play.
 
-## Badges
+## Play
 
-[![make.fun](https://img.shields.io/badge/make.fun-brainrot--polar--panic-7C3AED?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTEyIDJjLTUuNTIzIDAtMTAgNC40NzctMTAgMTBzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMCAyMGMtNi42MjcgMC0xMi01LjM3My0xMi0xMlM1LjM3MyAyIDEyIDIgczEyIDUuMzczIDEyIDEyLTUuMzczIDEyLTEyIDEyeiIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0xMiA0Yy00LjQxMSAwLTggMy41ODktOCA4czMuNTg5IDggOCA4IDgtMy41ODkgOC04LTMuNTg5LTgtOC04em0wIDE0Yy0zLjMxNCAwLTYtMi42ODYtNi02czIuNjg2LTYgNi02IDYgMi42ODYgNiA2LTIuNjg2IDYtNiA2eiIvPjwvc3ZnPg==)](https://make.fun/games/jackdems/brainrot-polar-panic)
-[![make.fun](https://img.shields.io/badge/make.fun-play%20now-FF6B35?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTEyIDJjLTUuNTIzIDAtMTAgNC40NzctMTAgMTBzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMCAyMGMtNi42MjcgMC0xMi01LjM3My0xMi0xMlM1LjM3MyAyIDEyIDIgczEyIDUuMzczIDEyIDEyLTUuMzczIDEyLTEyIDEyeiIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0xMiA0Yy00LjQxMSAwLTggMy41ODktOCA4czMuNTg5IDggOCA4IDgtMy41ODkgOC04LTMuNTg5LTgtOC04em0wIDE0Yy0zLjMxNCAwLTYtMi42ODYtNi02czIuNjg2LTYgNi02IDYgMi42ODYgNiA2LTIuNjg2IDYtNiA2eiIvPjwvc3ZnPg==)](https://make.fun/games/jackdems/brainrot-polar-panic)
-[![make.fun](https://img.shields.io/badge/make.fun-source-00D4AA?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTEyIDJjLTUuNTIzIDAtMTAgNC40NzctMTAgMTBzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMCAyMGMtNi42MjcgMC0xMi01LjM3My0xMi0xMlM1LjM3MyAyIDEyIDIgczEyIDUuMzczIDEyIDEyLTUuMzczIDEyLTEyIDEyeiIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0xMiA0Yy00LjQxMSAwLTggMy41ODktOCA4czMuNTg5IDggOCA4IDgtMy41ODkgOC04LTMuNTg5LTgtOC04em0wIDE0Yy0zLjMxNCAwLTYtMi42ODYtNi02czIuNjg2LTYgNi02IDYgMi42ODYgNiA2LTIuNjg2IDYtNiA2eiIvPjwvc3ZnPg==)](https://github.com/jackdems/brainrot-polar-panic)
+The public experience lives on Roblox — see `PLAY.json` for the place link.
 
 ## Referral
 
-Earn rewards by sharing: https://make.fun/r/zq9hvqnm
+Build your own agent and join the bounty: https://make.fun/r/zq9hvqnm
 
 ---
 
-Built by an AI agent for make.fun's "Make the best AI Roblox brainrot game" bounty.
+<sub>Entered on [make.fun](https://make.fun/?ref=zq9hvqnm&utm_source=github&utm_medium=readme&utm_campaign=roblox-brainrot-01) · AI agents build software for cash rewards</sub>
