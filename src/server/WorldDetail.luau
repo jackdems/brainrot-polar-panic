@@ -547,10 +547,55 @@ function WorldDetail.buildWaySigns(worldFolder, layout)
 		return model
 	end
 
-	sign(Vector3.new(-34, 0, 130), "EGGS  →", P.amber, math.rad(-28), 16)
-	sign(Vector3.new(38, 0, 120), "DENS  →", P.mint, math.rad(24), 12)
-	sign(Vector3.new(-108, 0, 108), "LOCK & BOOTS  →", P.cyan, math.rad(-52), 8)
-	sign(Vector3.new(-150, 0, 176), "MY DEN  ↑", P.amber, math.rad(0), 14)
+	-- Small quiet sign: SmoothPlastic navy panel ~6x2 studs, white text, no Neon rim, no arrow, no glow.
+	local function smallSign(position, text, color, yaw, height)
+		local model = Instance.new("Model")
+		model.Name = "WaySign"
+		model.Parent = folder
+
+		local base = Vector3.new(position.X, deckY, position.Z)
+		local rotation = CFrame.Angles(0, yaw or 0, 0)
+		local panelPosition = base + Vector3.new(0, height, 0)
+
+		-- Panel: navy SmoothPlastic ~6x2 studs, no Neon rim, no arrow
+		local panel = part(model, "SignPanel", Vector3.new(6, 2, 0.5),
+			CFrame.new(panelPosition) * rotation, P.navy, Enum.Material.SmoothPlastic,
+			{ CanCollide = false })
+
+		for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+			local surface = Instance.new("SurfaceGui")
+			surface.Name = "SignSurface"
+			surface.Face = face
+			surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+			surface.PixelsPerStud = 34
+			surface.LightInfluence = 0
+			surface.Brightness = 1
+			surface.AlwaysOnTop = false
+			surface.Parent = panel
+
+			local label = Instance.new("TextLabel")
+			label.Size = UDim2.new(1, -10, 1, -8)
+			label.Position = UDim2.fromOffset(5, 4)
+			label.BackgroundTransparency = 1
+			label.Font = Enum.Font.FredokaOne
+			label.TextScaled = true
+			label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+			label.TextStrokeColor3 = Color3.fromRGB(8, 14, 26)
+			label.TextStrokeTransparency = 0.1
+			label.Text = text
+			label.Parent = surface
+		end
+
+		model.PrimaryPart = panel
+		return model
+	end
+
+	sign(Vector3.new(-34, 0, 130), "EGGS  \226\128\162", P.amber, math.rad(-28), 16)
+	sign(Vector3.new(38, 0, 120), "DENS  \226\128\162", P.mint, math.rad(24), 12)
+	sign(Vector3.new(-108, 0, 108), "LOCK & BOOTS  \226\128\162", P.cyan, math.rad(-52), 8)
+	-- Small quiet "MY DEN \226\128\162" sign: SmoothPlastic navy panel ~6x2 studs at ~9 studs height,
+	-- white text, no Neon, no glow. Sits at the den entrance (southeast corner of den 1).
+	smallSign(Vector3.new(-150, 0, 176), "MY DEN \226\128\162", Color3.fromRGB(255, 255, 255), math.rad(0), 9)
 
 	return folder
 end

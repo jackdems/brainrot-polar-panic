@@ -771,7 +771,8 @@ local function buildBase(parent, index, position)
 	-- The sign stands BEHIND the den (-Z), tall enough to clear the igloo and the
 	-- cast, so the plaza approach reads it across the island and the cover camera
 	-- (which always stands on the +Z plaza side) looks THROUGH the pads at it
-	-- instead of being masked by it. Slab + billboard; PlotService repaints both.
+	-- instead of being masked by it. SurfaceGui on the slab only — no floating
+	-- billboard duplicate. PlotService repaints the slab faces.
 	local signSlab = part(model, "NameSign", Vector3.new(44, 13, 1.2),
 		CFrame.new(position + Vector3.new(0, 34, -62)), WorldBuilder.denSignBack, Enum.Material.SmoothPlastic)
 	signSlab.CanCollide = false
@@ -779,11 +780,8 @@ local function buildBase(parent, index, position)
 		WorldBuilder.denSignColor, WorldBuilder.denSignBack, WorldBuilder.denSignColor)
 	local signBackFace = surfaceText(signSlab, Enum.NormalId.Front, "UNCLAIMED DEN",
 		WorldBuilder.denSignColor, WorldBuilder.denSignBack, WorldBuilder.denSignColor)
-
-	local signBoard = billboard(model, signSlab, Vector2.new(520, 140), Vector3.new(0, 8, 0), {
-		{ text = "UNCLAIMED DEN", color = WorldBuilder.denSignColor, height = 76, font = Enum.Font.FredokaOne },
-	}, WorldBuilder.denSignBack, WorldBuilder.denSignColor)
-	local signTitle = signBoard.Card:FindFirstChild("Line1")
+	-- signTitle points to the front face label so PlotService.setDenSign can update it
+	local signTitle = signFace
 
 	for _, x in ipairs({ -18, 18 }) do
 		part(model, "SignLeg", Vector3.new(1.4, 30, 1.4), CFrame.new(position + Vector3.new(x, 19, -62)),
@@ -1203,8 +1201,8 @@ function WorldBuilder.baseCenter(baseInfo)
 	return baseInfo.position + Vector3.new(0, 6, 0)
 end
 
--- Repaint a den sign on every surface it owns. Called on claim and on lock
--- changes so the slab, the back face and the billboard never disagree.
+-- Repaint a den sign on the SurfaceGui slab faces. Called on claim and on lock
+-- changes so the front and back faces never disagree.
 function WorldBuilder.setDenSign(baseInfo, text, color)
 	if not baseInfo then
 		return
