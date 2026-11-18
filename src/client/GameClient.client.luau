@@ -1,7 +1,11 @@
 --[[ GameClient
 	The client boot. One job: build the ScreenGui, construct every panel, hold the
-	local copy of the state the server pushed, and route the remotes into the
-	right panel. No game rules live here.
+	local copy of the state the server pushed, and route the remotes into the right
+	panel. No game rules live here.
+
+	This file is named GameClient.client.luau and the starter's grey-square demo
+	client (Game.client.luau) was deleted: Rojo maps all of src/client, so both
+	would run and the starter's box would appear in the world and the captures.
 ]]
 
 local Players = game:GetService("Players")
@@ -25,11 +29,17 @@ local InputController = require(script.Parent.InputController)
 
 -- ---------------------------------------------------------------- the gui
 
+local existing = playerGui:FindFirstChild("PolarPanicHud")
+if existing then
+	existing:Destroy()
+end
+
 local gui = Instance.new("ScreenGui")
 gui.Name = "PolarPanicHud"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = false
 gui.DisplayOrder = 20
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = playerGui
 
 -- ---------------------------------------------------------------- remotes
@@ -120,6 +130,7 @@ local function renderAll(snapshot)
 		return
 	end
 	state.snapshot = snapshot
+	state.baseIndex = snapshot.baseIndex
 	hud.setSnapshot(snapshot)
 	shop.render(snapshot)
 	den.render(snapshot)
@@ -158,6 +169,8 @@ bannerEvent.OnClientEvent:Connect(function(payload)
 	if payload.kind == "icewall" then
 		banner.countdown(payload.seconds or 20, payload.color)
 		banner.setDanger(0.75)
+	elseif payload.kind == "thief" then
+		banner.setDanger(0.5)
 	elseif payload.kind == "blizzard" then
 		banner.setDanger(0)
 	elseif payload.kind == "rebirth" then
@@ -166,8 +179,11 @@ bannerEvent.OnClientEvent:Connect(function(payload)
 end)
 
 hatchResult.OnClientEvent:Connect(function(payload)
+	if not payload then
+		return
+	end
 	effects.announceHatch(payload)
-	if payload and payload.position then
+	if payload.position then
 		effects.burst(payload.position + Vector3.new(0, 8, 0), payload.rarityColor, 70)
 	end
 	banner.toast("HATCHED  " .. string.upper(payload.name), payload.rarityColor, 2.6)
@@ -182,7 +198,9 @@ effectEvent.OnClientEvent:Connect(function(kind, payload)
 	elseif kind == "hatch" then
 		effects.burst(payload.position, RarityConfig.colorOf(payload.rarity), 60)
 	elseif kind == "place" then
-		effects.burst(payload.position and (payload.position + Vector3.new(0, 4, 0)), RarityConfig.colorOf(payload.rarity), 50)
+		if payload.position then
+			effects.burst(payload.position + Vector3.new(0, 4, 0), RarityConfig.colorOf(payload.rarity), 50)
+		end
 	elseif kind == "grab" or kind == "steal" or kind == "drop" then
 		if payload.position then
 			effects.burst(payload.position + Vector3.new(0, 4, 0), Color3.fromRGB(255, 236, 130), 40)
@@ -198,17 +216,17 @@ effectEvent.OnClientEvent:Connect(function(kind, payload)
 	elseif kind == "frozen" then
 		banner.setDanger(1)
 		effects.shake(1.2, 0.7)
-		task.delay((payload.seconds or 5), function()
+		task.delay(payload.seconds or 5, function()
 			banner.setDanger(0)
 		end)
-	elseif kind == "blizzard" then
+	elseif kind == "blizzard" or kind == "blizzardEnd" then
 		banner.setDanger(0)
 	elseif kind == "rebirth" then
 		effects.shake(1.5, 1)
 		if payload.position then
 			effects.burst(payload.position, Color3.fromRGB(255, 214, 92), 120)
 		end
-	elseif kind == "upgrade" or kind == "unlock" or kind == "lock" then
+	elseif kind == "upgrade" or kind == "unlock" or kind == "lock" or kind == "locked" then
 		if payload.position then
 			effects.burst(payload.position + Vector3.new(0, 6, 0), Color3.fromRGB(126, 232, 255), 40)
 		end
@@ -247,7 +265,7 @@ local input = InputController.new({
 })
 
 -- The client builds its own map of interactables from the world the server
--- replicated: egg machines by name, dens by their BaseIndex attribute.
+-- replicated: egg machines by their EggId attribute, dens by their BaseIndex.
 task.spawn(function()
 	local world = workspace:WaitForChild("PolarPanic", 30)
 	if not world then
@@ -273,16 +291,18 @@ task.spawn(function()
 				table.insert(input.world.bases, {
 					model = child,
 					position = child:GetPivot().Position,
-					pads = {},
 					index = child:GetAttribute("BaseIndex"),
 				})
 			end
 		end
+		-- ipairs order must be den order, not filesystem order.
+		table.sort(input.world.bases, function(a, b)
+			return a.index < b.index
+		end)
 	end
 end)
 
--- Keep the camera's reference fresh (it is replaced on respawn) and let the input
--- controller see the latest snapshot the server pushed.
+-- Keep the camera's reference fresh (it is replaced on respawn).
 RunService.RenderStepped:Connect(function()
 	if workspace.CurrentCamera and effects then
 		effects.camera = workspace.CurrentCamera

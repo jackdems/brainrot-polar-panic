@@ -1,13 +1,12 @@
 --[[ InputController
 	One job: what the keyboard and mouse mean. E is the single context verb
-	(place / pick up / steal / stun / hatch), Q drops, 1-2-3 open the panels, P
-	buy a pad, L buy a lock. It decides nothing else: it reads the nearest
-	interactable and fires the right remote.
+	(hatch / place / pick up / steal / stun / grab), Q drops, 1-2-3 open the panels,
+	P buys a pad, L buys a lock. It decides nothing else: it reads the nearest
+	interactable, shows the matching hint, and fires the right remote.
 ]]
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("PolarShared")
@@ -18,12 +17,13 @@ local InputController = {}
 
 local player = Players.LocalPlayer
 
--- How close the player must be before E offers each verb.
+-- How close the player must be before E offers each verb. These are Client-side
+-- picks only — the server re-checks every one of them with its own reach.
 InputController.eggReach = 30
 InputController.beltReach = 14
 InputController.dropReach = 20
 InputController.thiefReach = 26
-InputController.denReach = 38
+InputController.denReach = 44
 
 function InputController.new(context)
 	local self = {}
@@ -42,16 +42,20 @@ function InputController.new(context)
 
 	-- ------------------------------------------------------------ scanning
 
+	local function rootPosition()
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		return root and root.Position or nil
+	end
+
 	-- The nearest thing E would act on. Lower distance wins; the thief is checked
 	-- first so it never loses to a den standing behind it.
 	local function scanForInteractable()
-		local character = player.Character
-		local root = character and character:FindFirstChild("HumanoidRootPart")
-		if not root then
+		local origin = rootPosition()
+		if not origin then
 			self.nearest = nil
 			return
 		end
-		local origin = root.Position
 
 		local best = nil
 		local bestDistance = math.huge
@@ -89,36 +93,40 @@ function InputController.new(context)
 		-- Belt loot and dropped (frozen or stunned) loot.
 		for _, model in ipairs(workspace:GetChildren()) do
 			if model:IsA("Model") then
-				if model.Name:sub(1, 9) == "Conveyor_" then
+				if string.sub(model.Name, 1, 9) == "Conveyor_" then
 					local distance = (origin - model:GetPivot().Position).Magnitude
 					if distance <= InputController.beltReach then
-						consider("belt", distance, model, "GRAB IT OFF THE BELT", Color3.fromRGB(126, 255, 176))
+						consider("dropped", distance, model, "GRAB IT OFF THE BELT", Color3.fromRGB(126, 255, 176))
 					end
-				elseif model.Name:sub(1, 8) == "Dropped_" then
+				elseif string.sub(model.Name, 1, 8) == "Dropped_" then
 					local distance = (origin - model:GetPivot().Position).Magnitude
 					if distance <= InputController.dropReach then
 						consider("dropped", distance, model,
-							"GRAB " .. string.upper(model.Name:gsub("^Dropped_", "")), Color3.fromRGB(255, 236, 130))
+							"GRAB " .. string.upper(string.gsub(model.Name, "^Dropped_", "")),
+							Color3.fromRGB(255, 236, 130))
 					end
 				end
 			end
 		end
 
 		-- Dens: your own for placing and picking, anybody else's for stealing.
-		local myIndex = state.snapshot and state.snapshot.baseIndex
+		local snapshot = state.snapshot
+		local myIndex = snapshot and snapshot.baseIndex
 		for index, baseInfo in ipairs(world.bases or {}) do
 			local distance = (origin - baseInfo.position).Magnitude
 			if distance <= InputController.denReach then
 				if index == myIndex then
-					if state.snapshot and state.snapshot.carried then
+					if snapshot and snapshot.carried then
 						consider("place", distance, index, "PLACE AT YOUR DEN", Color3.fromRGB(126, 255, 176))
-					else
+					elseif snapshot and (snapshot.placedCount or 0) > 0 then
 						consider("pickup", distance, index, "PICK UP FROM YOUR DEN", Color3.fromRGB(255, 236, 130))
 					end
 				else
-					local owner = state.snapshot and state.snapshot.dens and state.snapshot.dens[index]
+					local owner = snapshot and snapshot.dens and snapshot.dens[index]
 					if owner then
-						local label = if owner.locked then ("LOCKED — " .. owner.name) else ("STEAL FROM " .. owner.name)
+						local label = if owner.locked
+							then ("LOCKED — " .. owner.name)
+							else ("STEAL FROM " .. owner.name)
 						consider("steal", distance, { owner = owner, baseIndex = index }, label,
 							if owner.locked then Color3.fromRGB(120, 220, 255) else Color3.fromRGB(255, 160, 120))
 					end
@@ -130,7 +138,7 @@ function InputController.new(context)
 
 		if best then
 			hud.setHint("[E]  " .. best.label, best.color)
-		elseif state.snapshot and state.snapshot.carried then
+		elseif snapshot and snapshot.carried then
 			hud.setHint("[E]  PLACE AT YOUR DEN  ·  walk home", Color3.fromRGB(255, 236, 130))
 		else
 			hud.setHint("", nil)
@@ -140,7 +148,7 @@ function InputController.new(context)
 	task.spawn(function()
 		while true do
 			scanForInteractable()
-			task.wait(0.2)
+			task.wait(0.15)
 		end
 	end)
 
@@ -169,7 +177,7 @@ function InputController.new(context)
 
 		if target.kind == "egg" then
 			remotes.RequestHatch:FireServer(target.payload)
-		elseif target.kind == "belt" or target.kind == "dropped" then
+		elseif target.kind == "dropped" then
 			remotes.RequestGrabDropped:FireServer(target.payload:GetAttribute("CharacterId"))
 		elseif target.kind == "thief" then
 			remotes.RequestStunThief:FireServer()
@@ -182,15 +190,18 @@ function InputController.new(context)
 				hud.setHint("Your hands are full — place what you have first.", Color3.fromRGB(255, 160, 120))
 				return
 			end
-			local character = player.Character
-			local root = character and character:FindFirstChild("HumanoidRootPart")
+			if target.payload.owner.locked then
+				hud.setHint("LOCKED — wait it out or out-earn them.", Color3.fromRGB(120, 220, 255))
+				return
+			end
+			local origin = rootPosition()
 			local baseInfo = nil
 			for index, info in ipairs(world.bases or {}) do
 				if index == target.payload.baseIndex then
 					baseInfo = info
 				end
 			end
-			local padIndex = if (baseInfo and root) then nearestPadIndex(baseInfo, root.Position) else 1
+			local padIndex = if (baseInfo and origin) then nearestPadIndex(baseInfo, origin) else 1
 			remotes.RequestSteal:FireServer(target.payload.owner.userId, padIndex or 1)
 		end
 	end

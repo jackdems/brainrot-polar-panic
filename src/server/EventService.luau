@@ -4,12 +4,8 @@
 	the sky changes.
 ]]
 
-local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-
-local Shared = ReplicatedStorage:WaitForChild("PolarShared")
 
 local EventService = {}
 
@@ -60,7 +56,7 @@ local function buildGoldenSky()
 	emitter.Color = ColorSequence.new(Color3.fromRGB(255, 214, 92))
 	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.4), NumberSequenceKeypoint.new(1, 0.4) })
 	emitter.Lifetime = NumberRange.new(6, 10)
-	emitter.Rate = 900
+	emitter.Rate = 700
 	emitter.Speed = NumberRange.new(14, 26)
 	emitter.SpreadAngle = Vector2.new(180, 180)
 	emitter.LightEmission = 0.7
@@ -80,12 +76,13 @@ function EventService.startBlizzard()
 	ServerState.setEventMultiplier(EventService.baseMultiplier)
 	buildGoldenSky()
 
-	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-	if atmosphere then
-		TweenService:Create(atmosphere, TweenInfo.new(2), {
-			Color = Color3.fromRGB(255, 226, 150),
-			Decay = Color3.fromRGB(240, 180, 90),
-			Glare = 0.4,
+	-- Tint the lighting, never a fog or an Atmosphere: the world has to stay
+	-- readable while the event is on.
+	local grade = Lighting:FindFirstChild("PolarGrade")
+	if grade and grade:IsA("ColorCorrectionEffect") then
+		TweenService:Create(grade, TweenInfo.new(2), {
+			TintColor = Color3.fromRGB(255, 240, 200),
+			Saturation = 0.3,
 		}):Play()
 	end
 
@@ -105,12 +102,11 @@ function EventService.stopBlizzard()
 		rig:Destroy()
 	end
 
-	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-	if atmosphere then
-		TweenService:Create(atmosphere, TweenInfo.new(2), {
-			Color = Color3.fromRGB(210, 232, 250),
-			Decay = Color3.fromRGB(120, 168, 210),
-			Glare = 0.1,
+	local grade = Lighting:FindFirstChild("PolarGrade")
+	if grade and grade:IsA("ColorCorrectionEffect") then
+		TweenService:Create(grade, TweenInfo.new(2), {
+			TintColor = Color3.fromRGB(255, 255, 255),
+			Saturation = 0.12,
 		}):Play()
 	end
 

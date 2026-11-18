@@ -47,7 +47,8 @@ function UpgradeService.tryBuyUpgrade(player, record, upgradeId)
 	end
 
 	if not ServerState.trySpend(record, price) then
-		NetworkGuard.notify(player, string.format("Need $%d for %s.", price, upgrade.name), Color3.fromRGB(255, 140, 120))
+		NetworkGuard.notify(player, string.format("Need %s for %s.", UpgradesConfig.moneyText(price), upgrade.name),
+			Color3.fromRGB(255, 140, 120))
 		return
 	end
 
@@ -61,7 +62,8 @@ function UpgradeService.tryBuyUpgrade(player, record, upgradeId)
 		end
 	end
 
-	NetworkGuard.notify(player, string.format("%s upgraded to level %d.", upgrade.name, record.upgrades[id]), Color3.fromRGB(126, 255, 176))
+	NetworkGuard.notify(player, string.format("%s upgraded to level %d.", upgrade.name, record.upgrades[id]),
+		Color3.fromRGB(126, 255, 176))
 	NetworkGuard.effect("upgrade", { upgradeId = id, level = record.upgrades[id] })
 	NetworkGuard.pushState(player)
 end
@@ -76,7 +78,8 @@ function UpgradeService.tryBuyLock(player, record)
 	end
 
 	if not ServerState.trySpend(record, UpgradesConfig.lockPrice) then
-		NetworkGuard.notify(player, string.format("Need $%d for a Lock.", UpgradesConfig.lockPrice), Color3.fromRGB(255, 140, 120))
+		NetworkGuard.notify(player, string.format("Need %s for a Lock.", UpgradesConfig.moneyText(UpgradesConfig.lockPrice)),
+			Color3.fromRGB(255, 140, 120))
 		return
 	end
 
@@ -97,6 +100,8 @@ end
 -- ---------------------------------------------------------------- the dome
 
 -- One cheap loop for every den: raise the shield while locked, drop it after.
+-- The raised dome stays FAINT on purpose: a solid translucent sphere between the
+-- camera and the den is what flattened the first cover frame to milky white.
 function UpgradeService.watchShields()
 	while true do
 		task.wait(0.5)
@@ -106,8 +111,7 @@ function UpgradeService.watchShields()
 				local baseInfo = PlotService.baseFor(record)
 				local shield = baseInfo and baseInfo.shield
 				if shield then
-					local locked = ServerState.isLocked(record)
-					local target = if locked then 0.72 else 1
+					local target = if ServerState.isLocked(record) then 0.86 else 1
 					if math.abs(shield.Transparency - target) > 0.01 then
 						TweenService:Create(shield, TweenInfo.new(0.4), { Transparency = target }):Play()
 					end

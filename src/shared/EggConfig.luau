@@ -118,4 +118,15 @@ function EggConfig.isUnlocked(egg, rebirthCount)
 	return (rebirthCount or 0) >= (egg.requiresRebirth or 0)
 end
 
+-- The best rarity an egg can possibly pay out at this luck level: the shop card
+-- prints it as the top prize so a player knows what they are chasing.
+function EggConfig.topPrize(egg, luckLevel)
+	return RarityConfig.topOf(EggConfig.weightsFor(egg, luckLevel or 0))
+end
+
+-- Human-readable odds, e.g. "COMM 70% · UNCO 25% · RARE 5%".
+function EggConfig.oddsText(egg, luckLevel)
+	return RarityConfig.oddsLine(EggConfig.weightsFor(egg, luckLevel or 0))
+end
+
 return EggConfig

@@ -67,4 +67,17 @@ function UpgradesConfig.walkSpeedFor(speedBootsLevel)
 	return UpgradesConfig.baseWalkSpeed * (1 + 0.25 * math.clamp(speedBootsLevel or 0, 0, 3))
 end
 
+-- "$25,000" / "$1.2M": the same short money format the whole UI uses.
+function UpgradesConfig.moneyText(amount)
+	local number = math.floor(amount or 0)
+	if number >= 1e9 then
+		return string.format("$%.1fB", number / 1e9)
+	elseif number >= 1e6 then
+		return string.format("$%.1fM", number / 1e6)
+	elseif number >= 1e4 then
+		return string.format("$%.1fK", number / 1e3)
+	end
+	return string.format("$%d", number)
+end
+
 return UpgradesConfig

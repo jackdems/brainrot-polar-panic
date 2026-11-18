@@ -1,7 +1,6 @@
 --[[ EffectsClient
 	One job: the client-side show. Floating "+$N" popups over the cash card, the
-	character pop-out on a hatch, the ice-block flash when frozen, sparkle bursts
-	when something is placed, and a camera shake when the wall sweeps past.
+	hatch result card, 3D sparkle bursts, and a camera shake when the wall sweeps.
 ]]
 
 local Players = game:GetService("Players")
@@ -42,19 +41,19 @@ function EffectsClient.new(gui, camera)
 		local text = Instance.new("TextLabel")
 		text.Name = "MoneyPopup"
 		text.AnchorPoint = Vector2.new(0, 0.5)
-		text.Position = UDim2.new(0, 240 + math.random(-16, 16), 0, 132)
-		text.Size = UDim2.fromOffset(240, 44)
+		text.Position = UDim2.new(0, 260 + math.random(-16, 16), 0, 150)
+		text.Size = UDim2.fromOffset(260, 48)
 		text.BackgroundTransparency = 1
 		text.Font = Enum.Font.FredokaOne
-		text.TextSize = 34
+		text.TextSize = 36
 		text.TextColor3 = Color3.fromRGB(126, 255, 176)
-		text.TextStrokeTransparency = 0.35
+		text.TextStrokeTransparency = 0.3
 		text.TextStrokeColor3 = Color3.fromRGB(8, 24, 12)
 		text.TextXAlignment = Enum.TextXAlignment.Left
-		text.Text = "+$" .. self.shortNumber(amount)
+		text.Text = "+" .. self.shortNumber(amount)
 		text.Parent = popupLayer
 
-		local target = UDim2.new(0, 240 + math.random(-30, 30), 0, 60)
+		local target = UDim2.new(0, 260 + math.random(-30, 30), 0, 70)
 		TweenService:Create(text, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Position = target,
 			TextTransparency = 1,
@@ -75,10 +74,10 @@ function EffectsClient.new(gui, camera)
 		local card = Instance.new("Frame")
 		card.Name = "HatchResult"
 		card.AnchorPoint = Vector2.new(0.5, 0)
-		card.Position = UDim2.new(0.5, 0, 0, 330)
-		card.Size = UDim2.fromOffset(600, 96)
-		card.BackgroundColor3 = Color3.fromRGB(10, 18, 34)
-		card.BackgroundTransparency = 0.1
+		card.Position = UDim2.new(0.5, 0, 0, 336)
+		card.Size = UDim2.fromOffset(640, 104)
+		card.BackgroundColor3 = Color3.fromRGB(8, 16, 30)
+		card.BackgroundTransparency = 0.06
 		card.BorderSizePixel = 0
 		card.Parent = popupLayer
 		corner(card, 16)
@@ -89,18 +88,20 @@ function EffectsClient.new(gui, camera)
 		stroke.Parent = card
 
 		local title = Instance.new("TextLabel")
-		title.Size = UDim2.new(1, -20, 0, 44)
+		title.Size = UDim2.new(1, -20, 0, 50)
 		title.Position = UDim2.fromOffset(10, 6)
 		title.BackgroundTransparency = 1
 		title.Font = Enum.Font.FredokaOne
 		title.TextScaled = true
 		title.TextColor3 = Color3.fromRGB(255, 255, 255)
+		title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		title.TextStrokeTransparency = 0.35
 		title.Text = string.upper(payload.name)
 		title.Parent = card
 
 		local sub = Instance.new("TextLabel")
-		sub.Size = UDim2.new(1, -20, 0, 36)
-		sub.Position = UDim2.fromOffset(10, 52)
+		sub.Size = UDim2.new(1, -20, 0, 38)
+		sub.Position = UDim2.fromOffset(10, 58)
 		sub.BackgroundTransparency = 1
 		sub.Font = Enum.Font.GothamBlack
 		sub.TextScaled = true
@@ -109,9 +110,9 @@ function EffectsClient.new(gui, camera)
 			string.upper(payload.mutation or "NONE"), payload.moneyPerSecond or 0)
 		sub.Parent = card
 
-		card.Size = UDim2.fromOffset(300, 50)
+		card.Size = UDim2.fromOffset(320, 54)
 		TweenService:Create(card, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Size = UDim2.fromOffset(600, 96),
+			Size = UDim2.fromOffset(640, 104),
 		}):Play()
 
 		task.delay(3, function()
@@ -187,9 +188,9 @@ function EffectsClient.new(gui, camera)
 	function self.shortNumber(value)
 		local number = math.floor(value or 0)
 		if number >= 1e9 then
-			return string.format("%.1fB", number / 1e9)
+			return string.format("%.2fB", number / 1e9)
 		elseif number >= 1e6 then
-			return string.format("%.1fM", number / 1e6)
+			return string.format("%.2fM", number / 1e6)
 		elseif number >= 1e4 then
 			return string.format("%.1fK", number / 1e3)
 		end

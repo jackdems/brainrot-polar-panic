@@ -64,16 +64,20 @@ CastConfig.cast = {
 	{ name = "Galassio Infinito", rarity = "Secret", moneyPerSecond = 25000, bodyPlan = "special", form = "galaxy", bodyColor = Color3.fromRGB(46, 30, 96), accentColor = Color3.fromRGB(140, 210, 255) },
 }
 
--- Indices for the two hot paths: lookup by name (saves, thiefs, labels) and
--- lookup by (rarity, plan) when a roll has to be turned into a character.
+-- Indices for the two hot paths: lookup by name (labels, thieves, saves) and
+-- lookup by rarity when a roll has to be turned into a character.
 CastConfig.byName = {}
 CastConfig.byRarity = {}
+CastConfig.countByRarity = {}
 
 for _, entry in ipairs(CastConfig.cast) do
 	CastConfig.byName[entry.name] = entry
 	CastConfig.byRarity[entry.rarity] = CastConfig.byRarity[entry.rarity] or {}
 	table.insert(CastConfig.byRarity[entry.rarity], entry)
+	CastConfig.countByRarity[entry.rarity] = (CastConfig.countByRarity[entry.rarity] or 0) + 1
 end
+
+CastConfig.count = #CastConfig.cast
 
 function CastConfig.get(name)
 	return CastConfig.byName[name]
@@ -120,6 +124,20 @@ function CastConfig.sortedByRarity()
 	return sorted
 end
 
-CastConfig.count = #CastConfig.cast
+-- Every character that exists at one rarity: the collection panel's denominator.
+function CastConfig.countAt(rarityName)
+	return CastConfig.countByRarity[rarityName] or 0
+end
+
+-- The richest character in the cast: the HUD's next-tier teaser reads this.
+function CastConfig.topEarner()
+	local best = CastConfig.cast[1]
+	for _, entry in ipairs(CastConfig.cast) do
+		if entry.moneyPerSecond > best.moneyPerSecond then
+			best = entry
+		end
+	end
+	return best
+end
 
 return CastConfig

@@ -1,29 +1,22 @@
 --[[ StealService
 	One job: player-on-player theft. Press E on somebody else's placed character
-	and, if their den is not Locked, you carry it home and it becomes yours. The
-	owner (or anyone) touching the carrier forces a drop.
+	and, if their den is not Locked, you carry it home and it becomes yours. A
+	locked den refuses with feedback; a bump from anybody forces a drop.
 ]]
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Shared = ReplicatedStorage:WaitForChild("PolarShared")
-
-local CastConfig = require(Shared.CastConfig)
-local RarityConfig = require(Shared.RarityConfig)
 
 local StealService = {}
 
-local ServerState, NetworkGuard, PlotService, CharacterFactory
+local ServerState, NetworkGuard, PlotService
 
-StealService.stealReach = 26
-StealService.bumpReach = 8
+StealService.stealReach = 56
+StealService.bumpReach = 28
 
 function StealService.init(context)
 	ServerState = context.state
 	NetworkGuard = context.guard or require(script.Parent.NetworkGuard)
 	PlotService = require(script.Parent.PlotService)
-	CharacterFactory = context.characterFactory
 
 	NetworkGuard.register("RequestSteal", StealService.attemptSteal)
 
@@ -35,7 +28,8 @@ end
 -- `targetUserId` and `padIndex` come from the client; both are re-checked here.
 function StealService.attemptSteal(player, record, targetUserId, padIndex)
 	if record.carried then
-		NetworkGuard.notify(player, "Your hands are full — place what you have first.", Color3.fromRGB(255, 210, 120))
+		NetworkGuard.notify(player, "Your hands are full — place what you have first.",
+			Color3.fromRGB(255, 210, 120))
 		return
 	end
 
@@ -57,15 +51,15 @@ function StealService.attemptSteal(player, record, targetUserId, padIndex)
 		return
 	end
 
-	if ServerState.isLocked(targetRecord) then
-		NetworkGuard.notify(player, "LOCKED — that den is protected. Wait it out.", Color3.fromRGB(120, 220, 255))
-		NetworkGuard.effectTo(player, "locked", { position = PlotService.baseFor(targetRecord) and PlotService.baseFor(targetRecord).position })
+	local targetBase = PlotService.baseFor(targetRecord)
+	if not targetBase or not NetworkGuard.inReach(player, targetBase.position, StealService.stealReach) then
+		NetworkGuard.notify(player, "You have to be at their den to steal.", Color3.fromRGB(255, 160, 120))
 		return
 	end
 
-	local targetBase = PlotService.baseFor(targetRecord)
-	if not targetBase or not NetworkGuard.inReach(player, targetBase.position, 56) then
-		NetworkGuard.notify(player, "You have to be at their den to steal.", Color3.fromRGB(255, 160, 120))
+	if ServerState.isLocked(targetRecord) then
+		NetworkGuard.notify(player, "LOCKED — that den is protected. Wait it out.", Color3.fromRGB(120, 220, 255))
+		NetworkGuard.effectTo(player, "locked", { position = targetBase.position })
 		return
 	end
 
@@ -84,7 +78,8 @@ function StealService.attemptSteal(player, record, targetUserId, padIndex)
 
 	NetworkGuard.notify(player, "Stole " .. taken.name .. "! Run home and place it.", Color3.fromRGB(126, 255, 176))
 	if targetPlayer and targetPlayer.Parent then
-		NetworkGuard.notify(targetPlayer, player.Name .. " is stealing your " .. taken.name .. "!", Color3.fromRGB(255, 126, 108))
+		NetworkGuard.notify(targetPlayer, player.Name .. " is stealing your " .. taken.name .. "!",
+			Color3.fromRGB(255, 126, 108))
 		NetworkGuard.pushState(targetPlayer)
 	end
 
@@ -98,8 +93,8 @@ end
 
 -- ---------------------------------------------------------------- the bump
 
--- Called by the carrier's own client when they crash into somebody: the victim
--- (or any bystander) forces the carrier to drop what they are holding.
+-- Anybody can knock the loot out of a thief's hands when they are close enough:
+-- the carrier drops it on the snow and it becomes grabbable by anyone.
 function StealService.forceDrop(player, record, reason)
 	local dropped = PlotService.dropCarried(player, record, reason)
 	if not dropped then
@@ -109,7 +104,7 @@ function StealService.forceDrop(player, record, reason)
 	return dropped
 end
 
--- Guard helper: is `player` carrying something stolen from `otherRecord`?
+-- Guard helper: is `player` carrying something stolen from `ownerUserId`?
 function StealService.stolenFrom(record, ownerUserId)
 	if not record or not record.carried then
 		return false

@@ -34,4 +34,28 @@ function RebirthConfig.galaxyUnlocked(rebirths)
 	return (rebirths or 0) >= RebirthConfig.galaxyEggRebirth
 end
 
+-- The whole ladder as rows for the panel: {index, multiplier, cost}.
+function RebirthConfig.ladder()
+	local rows = {}
+	for index = 1, RebirthConfig.maxRebirths do
+		table.insert(rows, {
+			index = index,
+			multiplier = RebirthConfig.multiplier(index),
+			cost = RebirthConfig.cost(index - 1),
+		})
+	end
+	return rows
+end
+
+-- "x4" / "$25,000" - the panel and the HUD both want these strings.
+function RebirthConfig.describeCost(rebirths)
+	local cost = RebirthConfig.cost(rebirths)
+	if cost >= 1e6 then
+		return string.format("$%.1fM", cost / 1e6)
+	elseif cost >= 1e4 then
+		return string.format("$%.1fK", cost / 1e3)
+	end
+	return string.format("$%d", cost)
+end
+
 return RebirthConfig

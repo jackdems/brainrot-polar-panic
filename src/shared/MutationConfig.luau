@@ -22,7 +22,7 @@ MutationConfig.list = {
 		multiplier = 1.5,
 		material = Enum.Material.Metal,
 		tint = Color3.fromRGB(255, 196, 46),
-		sparkle = false,
+		sparkle = true,
 		color = Color3.fromRGB(255, 196, 46),
 	},
 	{
@@ -97,6 +97,21 @@ function MutationConfig.tagText(name)
 		return ""
 	end
 	return name
+end
+
+-- The tag line under a mutated character's name: "GOLD  x1.5".
+function MutationConfig.tagLine(name)
+	local mutation = MutationConfig.get(name)
+	if mutation.name == MutationConfig.plainName then
+		return ""
+	end
+	return string.upper(mutation.name) .. "  x" .. tostring(mutation.multiplier)
+end
+
+-- Force a specific mutation on a live model: the screenshot harness asks for a
+-- Gold and a Diamond on the cover den, and a player would never see that by luck.
+function MutationConfig.byIndex(index)
+	return MutationConfig.list[math.clamp(index or 1, 1, #MutationConfig.list)]
 end
 
 return MutationConfig

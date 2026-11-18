@@ -24,8 +24,9 @@ Remotes.events = {
 	"RequestBuyUpgrade",
 	"RequestRebirth",
 	"RequestDrop",
+	"RequestSnapshot",
 	"RequestDevGrant", -- Studio-only: seeds cash so a builder can photograph a den
-	"RequestSnapshot", -- fired with no args; answered on StateChanged
+	"RequestDevMutation", -- Studio-only: repaints one placed character for a capture
 }
 
 -- Server -> client.
@@ -55,6 +56,11 @@ function Remotes.get(name)
 		return nil
 	end
 	return folder:FindFirstChild(name) or folder:WaitForChild(name, 30)
+end
+
+-- Every name the server must publish, for the boot script's sanity count.
+function Remotes.count()
+	return #Remotes.events + #Remotes.serverEvents + #Remotes.functions
 end
 
 return Remotes

@@ -66,23 +66,23 @@ print("[PolarPanic] remotes published: " .. #remotesFolder:GetChildren())
 
 -- ---------------------------------------------------------------- world
 
-local world = WorldBuilder.build()
+local world = WorldBuilder.buildIsland()
 
-local eggCount = 0
-for _ in pairs(world.eggMachines) do
-	eggCount += 1
+local function countTable(tbl)
+	local count = 0
+	for _ in pairs(tbl) do
+		count += 1
+	end
+	return count
+end
+
+local padTotal = 0
+for _, base in ipairs(world.bases) do
+	padTotal += countTable(base.pads)
 end
 
 print(string.format("[PolarPanic] world built: bases=%d eggs=%d pads=%d",
-	#world.bases, eggCount, (function()
-		local count = 0
-		for _, base in ipairs(world.bases) do
-			for _ in pairs(base.pads) do
-				count += 1
-			end
-		end
-		return count
-	end)()))
+	#world.bases, countTable(world.eggMachines), padTotal))
 
 -- ---------------------------------------------------------------- services
 
@@ -90,6 +90,7 @@ local context = {
 	world = world,
 	state = ServerState,
 	remotes = remotesFolder,
+	guard = NetworkGuard,
 	characterFactory = CharacterFactory,
 	worldBuilder = WorldBuilder,
 }
@@ -109,26 +110,31 @@ EventService.init(context)
 
 -- ---------------------------------------------------------------- players
 
+local function applyWalkSpeed(player, record)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.Health > 0 then
+		humanoid.WalkSpeed = UpgradesConfig.walkSpeedFor(record.upgrades.SpeedBoots)
+		humanoid.JumpPower = 52
+		humanoid.UseJumpPower = true
+	end
+end
+
 local function onPlayerAdded(player)
+	-- leaderstats first, so the join push already has somewhere to land.
+	MoneyService.buildLeaderstats(player)
+
 	local record = ServerState.create(player)
 	PlotService.claimBase(player, record)
 
 	-- Speed Boots apply from the first frame the character exists, and again on
 	-- every respawn (the wall and the thieves both kill).
-	player.CharacterAdded:Connect(function(character)
-		local humanoid = character:WaitForChild("Humanoid", 10)
-		if humanoid then
-			humanoid.WalkSpeed = UpgradesConfig.walkSpeedFor(record.upgrades.SpeedBoots)
-			humanoid.JumpPower = 52
-			humanoid.UseJumpPower = true
-		end
+	player.CharacterAdded:Connect(function()
+		task.wait(0.2)
+		applyWalkSpeed(player, record)
 	end)
-
 	if player.Character then
-		local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid.WalkSpeed = UpgradesConfig.walkSpeedFor(record.upgrades.SpeedBoots)
-		end
+		applyWalkSpeed(player, record)
 	end
 
 	NetworkGuard.pushState(player)
@@ -136,12 +142,19 @@ local function onPlayerAdded(player)
 		player.Name, tostring(record.baseIndex), math.floor(record.cash)))
 end
 
+local function onPlayerRemoving(player)
+	local record = ServerState.get(player)
+	if record then
+		PlotService.releaseBase(record)
+	end
+	NetworkGuard.forget(player)
+	ServerState.forget(player)
+end
+
 for _, player in ipairs(Players:GetPlayers()) do
 	task.spawn(onPlayerAdded, player)
 end
 Players.PlayerAdded:Connect(onPlayerAdded)
-Players.PlayerRemoving:Connect(function(player)
-	ServerState.forget(player)
-end)
+Players.PlayerRemoving:Connect(onPlayerRemoving)
 
 print("[PolarPanic] boot complete")

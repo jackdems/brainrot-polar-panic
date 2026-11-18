@@ -1,7 +1,7 @@
 --[[ BannerUi
 	One job: the big centre-screen announcements — the Ice Wall warning with its
-	red vignette, the Golden Blizzard, a rebirth, a thief raid — plus the small
-	toast line for one-off messages.
+	red vignette and countdown, the Golden Blizzard, a rebirth, a thief raid — plus
+	the small toast line for one-off messages.
 ]]
 
 local TweenService = game:GetService("TweenService")
@@ -41,10 +41,10 @@ function BannerUi.new(gui)
 	local banner = Instance.new("Frame")
 	banner.Name = "Banner"
 	banner.AnchorPoint = Vector2.new(0.5, 0)
-	banner.Position = UDim2.new(0.5, 0, 0, 190)
-	banner.Size = UDim2.fromOffset(900, 108)
-	banner.BackgroundColor3 = Color3.fromRGB(10, 18, 34)
-	banner.BackgroundTransparency = 0.08
+	banner.Position = UDim2.new(0.5, 0, 0, 196)
+	banner.Size = UDim2.fromOffset(940, 116)
+	banner.BackgroundColor3 = Color3.fromRGB(8, 16, 30)
+	banner.BackgroundTransparency = 0.06
 	banner.BorderSizePixel = 0
 	banner.Visible = false
 	banner.ZIndex = 5
@@ -62,21 +62,25 @@ function BannerUi.new(gui)
 	bannerText.Position = UDim2.fromOffset(15, 6)
 	bannerText.BackgroundTransparency = 1
 	bannerText.Font = Enum.Font.FredokaOne
-	bannerText.TextSize = 44
+	bannerText.TextSize = 46
 	bannerText.TextScaled = true
 	bannerText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	bannerText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	bannerText.TextStrokeTransparency = 0.4
 	bannerText.Text = ""
 	bannerText.Parent = banner
 
 	local countdown = Instance.new("TextLabel")
 	countdown.Name = "Countdown"
 	countdown.AnchorPoint = Vector2.new(0.5, 0)
-	countdown.Position = UDim2.new(0.5, 0, 0, 306)
-	countdown.Size = UDim2.fromOffset(420, 46)
+	countdown.Position = UDim2.new(0.5, 0, 0, 320)
+	countdown.Size = UDim2.fromOffset(460, 52)
 	countdown.BackgroundTransparency = 1
 	countdown.Font = Enum.Font.FredokaOne
-	countdown.TextSize = 40
+	countdown.TextSize = 44
 	countdown.TextColor3 = Color3.fromRGB(255, 236, 130)
+	countdown.TextStrokeColor3 = Color3.fromRGB(30, 6, 6)
+	countdown.TextStrokeTransparency = 0.3
 	countdown.Text = ""
 	countdown.Visible = false
 	countdown.ZIndex = 5
@@ -86,10 +90,10 @@ function BannerUi.new(gui)
 	local toast = Instance.new("TextLabel")
 	toast.Name = "Toast"
 	toast.AnchorPoint = Vector2.new(0.5, 0)
-	toast.Position = UDim2.new(0.5, 0, 0, 258)
-	toast.Size = UDim2.fromOffset(760, 48)
-	toast.BackgroundColor3 = Color3.fromRGB(10, 18, 34)
-	toast.BackgroundTransparency = 0.2
+	toast.Position = UDim2.new(0.5, 0, 0, 268)
+	toast.Size = UDim2.fromOffset(820, 52)
+	toast.BackgroundColor3 = Color3.fromRGB(8, 16, 30)
+	toast.BackgroundTransparency = 0.15
 	toast.BorderSizePixel = 0
 	toast.Font = Enum.Font.GothamBlack
 	toast.TextSize = 24
@@ -105,9 +109,10 @@ function BannerUi.new(gui)
 		toast.TextColor3 = color or Color3.fromRGB(255, 255, 255)
 		toast.Visible = true
 		toast.TextTransparency = 0
-		toast.BackgroundTransparency = 0.2
+		toast.BackgroundTransparency = 0.15
 		task.delay(duration or 2.5, function()
-			TweenService:Create(toast, TweenInfo.new(0.4), { TextTransparency = 1, BackgroundTransparency = 1 }):Play()
+			TweenService:Create(toast, TweenInfo.new(0.4),
+				{ TextTransparency = 1, BackgroundTransparency = 1 }):Play()
 			task.wait(0.45)
 			if toast.TextTransparency >= 1 then
 				toast.Visible = false
@@ -115,14 +120,14 @@ function BannerUi.new(gui)
 		end)
 	end
 
-	-- The banner: slides in, holds, fades.
+	-- The banner: pops in, holds, fades.
 	function self.show(text, color, seconds)
 		bannerText.Text = text or ""
 		bannerStroke.Color = color or Color3.fromRGB(150, 220, 255)
 		banner.Visible = true
 		banner.BackgroundTransparency = 0.7
 		bannerText.TextTransparency = 1
-		TweenService:Create(banner, TweenInfo.new(0.25), { BackgroundTransparency = 0.08 }):Play()
+		TweenService:Create(banner, TweenInfo.new(0.25), { BackgroundTransparency = 0.06 }):Play()
 		TweenService:Create(bannerText, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
 
 		task.delay(seconds or 3, function()
@@ -160,10 +165,13 @@ function BannerUi.new(gui)
 	end
 
 	function self.setDanger(level)
-		TweenService:Create(vignette, TweenInfo.new(0.5), { BackgroundTransparency = 1 - (level or 0) * 0.36 }):Play()
+		TweenService:Create(vignette, TweenInfo.new(0.5),
+			{ BackgroundTransparency = 1 - (level or 0) * 0.36 }):Play()
 	end
 
 	self.toast = showToast
+	self.banner = banner
+	self.vignette = vignette
 	return self
 end
 

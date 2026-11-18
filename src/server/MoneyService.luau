@@ -1,6 +1,6 @@
 --[[ MoneyService
 	One job: pay everybody. One accumulating Heartbeat tick, one payout per whole
-	second per player, and the leaderboard value the client mirrors. No other
+	second per player, and the leaderboard values the client mirrors. No other
 	module is allowed to add income.
 ]]
 
@@ -12,7 +12,7 @@ local MoneyService = {}
 local ServerState, NetworkGuard
 
 local accumulator = 0
-local PUSH_INTERVAL = 0.5
+local PUSH_INTERVAL = 0.45
 local pushTimer = 0
 
 function MoneyService.init(context)
@@ -20,31 +20,37 @@ function MoneyService.init(context)
 	NetworkGuard = context.guard or require(script.Parent.NetworkGuard)
 
 	-- leaderstats so the numbers are visible the moment a player joins.
-	Players.PlayerAdded:Connect(function(player)
-		local stats = Instance.new("Folder")
-		stats.Name = "leaderstats"
-
-		local cash = Instance.new("IntValue")
-		cash.Name = "Cash"
-		cash.Value = 0
-		cash.Parent = stats
-
-		local income = Instance.new("IntValue")
-		income.Name = "PerSecond"
-		income.Value = 0
-		income.Parent = stats
-
-		local rebirths = Instance.new("IntValue")
-		rebirths.Name = "Rebirths"
-		rebirths.Value = 0
-		rebirths.Parent = stats
-
-		stats.Parent = player
-	end)
+	Players.PlayerAdded:Connect(MoneyService.buildLeaderstats)
 
 	RunService.Heartbeat:Connect(MoneyService.step)
 
 	print("[MoneyService] ticking")
+end
+
+-- A player's three public numbers. Called on join; harmless if repeated.
+function MoneyService.buildLeaderstats(player)
+	if player:FindFirstChild("leaderstats") then
+		return
+	end
+	local stats = Instance.new("Folder")
+	stats.Name = "leaderstats"
+
+	local cash = Instance.new("IntValue")
+	cash.Name = "Cash"
+	cash.Value = 0
+	cash.Parent = stats
+
+	local income = Instance.new("IntValue")
+	income.Name = "PerSecond"
+	income.Value = 0
+	income.Parent = stats
+
+	local rebirths = Instance.new("IntValue")
+	rebirths.Name = "Rebirths"
+	rebirths.Value = 0
+	rebirths.Parent = stats
+
+	stats.Parent = player
 end
 
 -- Heartbeat accumulator: whole seconds only, so income is exactly $/s.
@@ -75,9 +81,9 @@ function MoneyService.tickIncome(seconds)
 				ServerState.addCash(record, payout)
 
 				-- Per-pad bookkeeping: the den panel shows each character's earnings.
+				local multiplier = ServerState.rebirthMultiplier(record) * ServerState.eventMultiplier
 				for _, pad in pairs(record.pads) do
-					pad.earned = (pad.earned or 0) + ServerState.padIncome(pad)
-						* ServerState.rebirthMultiplier(record) * ServerState.eventMultiplier * seconds
+					pad.earned = (pad.earned or 0) + ServerState.padIncome(pad) * multiplier * seconds
 				end
 
 				-- The HUD's floating "+N" rides this event.
@@ -116,7 +122,8 @@ end
 -- money" message is worded the same everywhere.
 function MoneyService.purchase(player, record, price, label)
 	if not ServerState.trySpend(record, price) then
-		NetworkGuard.notify(player, string.format("Need $%d for %s.", price, label or "that"), Color3.fromRGB(255, 140, 120))
+		NetworkGuard.notify(player, string.format("Need $%d for %s.", price, label or "that"),
+			Color3.fromRGB(255, 140, 120))
 		return false
 	end
 	NetworkGuard.pushState(player)

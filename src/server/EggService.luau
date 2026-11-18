@@ -4,8 +4,6 @@
 	the player a CARRIED character with a hatch result for the animation.
 ]]
 
-local Players = game:GetService("Players")
-local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("PolarShared")
@@ -30,13 +28,11 @@ function EggService.init(context)
 
 	NetworkGuard.register("RequestHatch", EggService.tryHatch)
 
-	print("[EggService] ready with " .. (function()
-		local count = 0
-		for _ in pairs(EggService.machines) do
-			count += 1
-		end
-		return count
-	end)() .. " machines")
+	local count = 0
+	for _ in pairs(EggService.machines) do
+		count += 1
+	end
+	print("[EggService] ready with " .. count .. " machines")
 end
 
 -- ---------------------------------------------------------------- the roll
@@ -92,13 +88,15 @@ function EggService.tryHatch(player, record, eggId)
 	end
 
 	if not EggConfig.isUnlocked(egg, record.rebirths) then
-		NetworkGuard.notify(player, "The " .. egg.name .. " opens after your first rebirth.", Color3.fromRGB(255, 160, 220))
+		NetworkGuard.notify(player, "The " .. egg.name .. " opens after your first rebirth.",
+			Color3.fromRGB(255, 160, 220))
 		NetworkGuard.effectTo(player, "shake", { eggId = id })
 		return
 	end
 
 	if record.cash < egg.price then
-		NetworkGuard.notify(player, string.format("Need $%d for a %s.", egg.price, egg.name), Color3.fromRGB(255, 140, 120))
+		NetworkGuard.notify(player, string.format("Need $%d for a %s.", egg.price, egg.name),
+			Color3.fromRGB(255, 140, 120))
 		NetworkGuard.effectTo(player, "shake", { eggId = id })
 		return
 	end
@@ -140,7 +138,9 @@ function EggService.tryHatch(player, record, eggId)
 		player.Name, roll.entry.name, roll.rarity, roll.mutation, egg.name))
 end
 
--- Deterministic helpers used by the verification scripts.
+-- ---------------------------------------------------------------- probes
+
+-- Used by the verification scripts: N rolls of one egg, tallied by rarity.
 function EggService.debugRollMany(eggId, luckLevel, count)
 	local egg = EggConfig.byId[eggId]
 	if not egg then

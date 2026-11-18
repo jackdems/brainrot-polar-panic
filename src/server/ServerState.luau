@@ -12,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("PolarShared")
 local CastConfig = require(Shared.CastConfig)
 local EggConfig = require(Shared.EggConfig)
 local MutationConfig = require(Shared.MutationConfig)
+local RarityConfig = require(Shared.RarityConfig)
 local RebirthConfig = require(Shared.RebirthConfig)
 local UpgradesConfig = require(Shared.UpgradesConfig)
 
@@ -163,6 +164,21 @@ function ServerState.freePadIndex(record)
 	return nil
 end
 
+-- The best character on a den, by effective income: the HUD's "top earner" line.
+function ServerState.topPad(record)
+	if not record then
+		return nil
+	end
+	local best, bestIncome = nil, -1
+	for _, pad in pairs(record.pads) do
+		local income = ServerState.padIncome(pad)
+		if income > bestIncome then
+			best, bestIncome = pad, income
+		end
+	end
+	return best
+end
+
 -- ---------------------------------------------------------------- pads
 
 function ServerState.unlockedPadCount(record)
@@ -208,31 +224,40 @@ function ServerState.snapshot(record)
 	if not record then
 		return nil
 	end
+
+	local multiplier = ServerState.rebirthMultiplier(record)
 	local pads = {}
 	for index, pad in pairs(record.pads) do
 		pads[index] = {
 			name = pad.name,
 			rarity = pad.rarity,
 			mutation = pad.mutation,
-			income = ServerState.padIncome(pad) * ServerState.rebirthMultiplier(record) * ServerState.eventMultiplier,
+			income = ServerState.padIncome(pad) * multiplier * ServerState.eventMultiplier,
 			earned = pad.earned or 0,
 			characterId = pad.characterId,
 		}
 	end
+
+	local topPad = ServerState.topPad(record)
+
 	return {
 		cash = record.cash,
 		income = ServerState.incomePerSecond(record),
 		baseIncome = ServerState.baseIncomePerSecond(record),
 		rebirths = record.rebirths,
-		multiplier = ServerState.rebirthMultiplier(record),
+		multiplier = multiplier,
 		eventMultiplier = ServerState.eventMultiplier,
 		unlockedPads = ServerState.unlockedPadCount(record),
 		maxPads = UpgradesConfig.basePadCount,
-		nextPadPrice = ServerState.canUnlockMorePads(record) and UpgradesConfig.padPrice(ServerState.unlockedPadCount(record) + 1)
+		nextPadPrice = ServerState.canUnlockMorePads(record)
+				and UpgradesConfig.padPrice(ServerState.unlockedPadCount(record) + 1)
 			or nil,
 		locked = ServerState.isLocked(record),
 		lockSecondsLeft = ServerState.lockSecondsLeft(record),
 		baseIndex = record.baseIndex,
+		placedCount = ServerState.placedCount(record),
+		topPad = topPad and { name = topPad.name, rarity = topPad.rarity, income = ServerState.padIncome(topPad) }
+			or nil,
 		carried = record.carried and {
 			name = record.carried.name,
 			rarity = record.carried.rarity,
@@ -273,6 +298,7 @@ function ServerState.denRoster()
 				userId = record.userId,
 				name = record.name,
 				locked = ServerState.isLocked(record),
+				placed = ServerState.placedCount(record),
 			}
 		end
 	end
@@ -281,6 +307,12 @@ end
 
 function ServerState.setEventMultiplier(value)
 	ServerState.eventMultiplier = value or 1
+end
+
+-- The single writer for the wall's public phase, so the HUD never reads a stale
+-- copy out of a service's local variable.
+function ServerState.setIceWall(phase, secondsLeft)
+	ServerState.iceWall = { phase = phase, secondsLeft = secondsLeft or 0 }
 end
 
 -- A stable, unique character instance id.
@@ -294,6 +326,15 @@ end
 -- hook lives here (not on Players.PlayerRemoving) so the module stays loadable.
 function ServerState.forget(player)
 	ServerState.players[player.UserId] = nil
+end
+
+-- Rarity facts the HUD and the collection panel both need, computed once.
+function ServerState.rarityTotals()
+	local totals = {}
+	for _, rarityName in ipairs(RarityConfig.order) do
+		totals[rarityName] = CastConfig.countAt(rarityName)
+	end
+	return totals
 end
 
 return ServerState

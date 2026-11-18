@@ -1,9 +1,13 @@
 --[[ ShopUi
 	One job: the egg shop panel and the upgrade row. Big cards, prices you can read
-	at screenshot scale, and a hatch button per egg that fires RequestHatch.
+	at screenshot scale, the real odds per egg, and a hatch button per egg that
+	fires RequestHatch.
+
+	Docked right and 880 px wide on purpose: the 2-acquire capture frames the egg
+	machines on the left third of the screen with this panel down the right, so the
+	player sees the shop they are standing in AND what it sells.
 ]]
 
-local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,24 +25,16 @@ local function corner(parent, radius)
 	return rounded
 end
 
-local function pad(parent, top, bottom)
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, top or 12)
-	padding.PaddingBottom = UDim.new(0, bottom or 12)
-	padding.Parent = parent
-	return padding
-end
-
--- The odds line on an egg card: read at screenshot scale, so keep it compact.
-local function oddsText(egg)
-	local parts = {}
-	for _, rarityName in ipairs({ "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Secret" }) do
-		local weight = egg.weights[rarityName]
-		if weight then
-			table.insert(parts, string.format("%s %s%%", string.sub(rarityName, 1, 4), tostring(weight)))
-		end
+local function money(value)
+	local number = math.floor(value or 0)
+	if number >= 1e9 then
+		return string.format("$%.2fB", number / 1e9)
+	elseif number >= 1e6 then
+		return string.format("$%.2fM", number / 1e6)
+	elseif number >= 1e4 then
+		return string.format("$%.1fK", number / 1e3)
 	end
-	return table.concat(parts, "  ·  ")
+	return string.format("$%d", number)
 end
 
 function ShopUi.new(gui, fireHatch, fireUpgrade)
@@ -47,12 +43,10 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 	local frame = Instance.new("Frame")
 	frame.Name = "ShopPanel"
 	frame.AnchorPoint = Vector2.new(1, 0.5)
-	-- Docked right so the island stays visible on the left: the shop you are
-	-- standing in is part of the sell.
-	frame.Position = UDim2.new(1, -16, 0.5, 0)
-	frame.Size = UDim2.fromOffset(880, 600)
-	frame.BackgroundColor3 = Color3.fromRGB(10, 18, 34)
-	frame.BackgroundTransparency = 0.04
+	frame.Position = UDim2.new(1, -14, 0.5, 0)
+	frame.Size = UDim2.fromOffset(880, 620)
+	frame.BackgroundColor3 = Color3.fromRGB(8, 16, 30)
+	frame.BackgroundTransparency = 0.03
 	frame.BorderSizePixel = 0
 	frame.Visible = false
 	frame.Parent = gui
@@ -65,11 +59,11 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-	title.Size = UDim2.new(1, -40, 0, 58)
+	title.Size = UDim2.new(1, -180, 0, 58)
 	title.Position = UDim2.fromOffset(20, 10)
 	title.BackgroundTransparency = 1
 	title.Font = Enum.Font.FredokaOne
-	title.TextSize = 44
+	title.TextSize = 40
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Text = "EGG SHOP — HATCH YOUR NEXT BRAINROT"
@@ -92,10 +86,10 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 		self.hide()
 	end)
 
-	-- Four egg cards in a row, then a narrower upgrade strip underneath.
+	-- Four egg cards in a row, then an upgrade strip underneath.
 	local grid = Instance.new("Frame")
 	grid.Name = "EggGrid"
-	grid.Size = UDim2.new(1, -40, 0, 380)
+	grid.Size = UDim2.new(1, -40, 0, 392)
 	grid.Position = UDim2.fromOffset(20, 76)
 	grid.BackgroundTransparency = 1
 	grid.Parent = frame
@@ -107,12 +101,13 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 
 	self.eggButtons = {}
 	self.eggCards = {}
+	self.eggOdds = {}
 
 	for _, egg in ipairs(EggConfig.eggs) do
 		local card = Instance.new("Frame")
 		card.Name = "Egg_" .. egg.id
-		card.Size = UDim2.fromOffset(248, 372)
-		card.BackgroundColor3 = Color3.fromRGB(18, 30, 50)
+		card.Size = UDim2.fromOffset(248, 384)
+		card.BackgroundColor3 = Color3.fromRGB(16, 28, 48)
 		card.BorderSizePixel = 0
 		card.Parent = grid
 		corner(card, 16)
@@ -126,27 +121,27 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 		local orb = Instance.new("Frame")
 		orb.Name = "Orb"
 		orb.AnchorPoint = Vector2.new(0.5, 0)
-		orb.Position = UDim2.new(0.5, 0, 0, 18)
-		orb.Size = UDim2.fromOffset(120, 120)
+		orb.Position = UDim2.new(0.5, 0, 0, 14)
+		orb.Size = UDim2.fromOffset(116, 116)
 		orb.BackgroundColor3 = egg.color
 		orb.BorderSizePixel = 0
 		orb.Parent = card
-		corner(orb, 60)
+		corner(orb, 58)
 
 		local orbShine = Instance.new("Frame")
 		orbShine.Name = "Shine"
-		orbShine.Size = UDim2.fromOffset(34, 34)
-		orbShine.Position = UDim2.fromOffset(20, 20)
+		orbShine.Size = UDim2.fromOffset(32, 32)
+		orbShine.Position = UDim2.fromOffset(18, 18)
 		orbShine.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		orbShine.BackgroundTransparency = 0.35
 		orbShine.BorderSizePixel = 0
 		orbShine.Parent = orb
-		corner(orbShine, 22)
+		corner(orbShine, 20)
 
 		local nameLabel = Instance.new("TextLabel")
 		nameLabel.Name = "EggName"
-		nameLabel.Size = UDim2.new(1, -16, 0, 40)
-		nameLabel.Position = UDim2.fromOffset(8, 146)
+		nameLabel.Size = UDim2.new(1, -16, 0, 38)
+		nameLabel.Position = UDim2.fromOffset(8, 138)
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.Font = Enum.Font.FredokaOne
 		nameLabel.TextSize = 26
@@ -157,32 +152,31 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 
 		local priceLabel = Instance.new("TextLabel")
 		priceLabel.Name = "Price"
-		priceLabel.Size = UDim2.new(1, -16, 0, 46)
-		priceLabel.Position = UDim2.fromOffset(8, 186)
+		priceLabel.Size = UDim2.new(1, -16, 0, 48)
+		priceLabel.Position = UDim2.fromOffset(8, 180)
 		priceLabel.BackgroundTransparency = 1
 		priceLabel.Font = Enum.Font.FredokaOne
-		priceLabel.TextSize = 42
+		priceLabel.TextSize = 44
 		priceLabel.TextScaled = true
 		priceLabel.TextColor3 = Color3.fromRGB(126, 255, 176)
-		priceLabel.Text = "$" .. egg.price
+		priceLabel.Text = money(egg.price)
 		priceLabel.Parent = card
 
 		local oddsLabel = Instance.new("TextLabel")
 		oddsLabel.Name = "Odds"
-		oddsLabel.Size = UDim2.new(1, -16, 0, 92)
+		oddsLabel.Size = UDim2.new(1, -16, 0, 96)
 		oddsLabel.Position = UDim2.fromOffset(8, 232)
 		oddsLabel.BackgroundTransparency = 1
 		oddsLabel.Font = Enum.Font.GothamMedium
-		oddsLabel.TextSize = 15
+		oddsLabel.TextSize = 16
 		oddsLabel.TextWrapped = true
-		oddsLabel.TextColor3 = Color3.fromRGB(196, 214, 236)
-		-- The odds line is built by the module-level oddsText helper.
-		oddsLabel.Text = oddsText(egg)
+		oddsLabel.TextColor3 = Color3.fromRGB(200, 218, 240)
+		oddsLabel.Text = EggConfig.oddsText(egg, 0)
 		oddsLabel.Parent = card
 
 		local hatchButton = Instance.new("TextButton")
 		hatchButton.Name = "Hatch"
-		hatchButton.Size = UDim2.new(1, -20, 0, 64)
+		hatchButton.Size = UDim2.new(1, -20, 0, 66)
 		hatchButton.AnchorPoint = Vector2.new(0.5, 1)
 		hatchButton.Position = UDim2.new(0.5, 0, 1, -12)
 		hatchButton.BackgroundColor3 = egg.color
@@ -201,34 +195,37 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 
 		hatchButton.MouseButton1Click:Connect(function()
 			fireHatch(egg.id)
-			TweenService:Create(hatchButton, TweenInfo.new(0.12), { Size = UDim2.new(1, -32, 0, 54) }):Play()
+			TweenService:Create(hatchButton, TweenInfo.new(0.12), { Size = UDim2.new(1, -32, 0, 56) }):Play()
 			task.delay(0.14, function()
-				TweenService:Create(hatchButton, TweenInfo.new(0.12), { Size = UDim2.new(1, -20, 0, 64) }):Play()
+				TweenService:Create(hatchButton, TweenInfo.new(0.12), { Size = UDim2.new(1, -20, 0, 66) }):Play()
 			end)
 		end)
 
 		self.eggButtons[egg.id] = hatchButton
 		self.eggCards[egg.id] = card
+		self.eggOdds[egg.id] = oddsLabel
 	end
 
 	-- Upgrades strip.
 	local upgradeRow = Instance.new("Frame")
 	upgradeRow.Name = "Upgrades"
-	upgradeRow.Size = UDim2.new(1, -40, 0, 108)
-	upgradeRow.Position = UDim2.fromOffset(20, 468)
-	upgradeRow.BackgroundColor3 = Color3.fromRGB(16, 26, 44)
+	upgradeRow.Size = UDim2.new(1, -40, 0, 116)
+	upgradeRow.Position = UDim2.fromOffset(20, 482)
+	upgradeRow.BackgroundColor3 = Color3.fromRGB(14, 24, 42)
 	upgradeRow.BorderSizePixel = 0
 	upgradeRow.Parent = frame
 	corner(upgradeRow, 14)
 
 	local upgradeLayout = Instance.new("UIListLayout")
 	upgradeLayout.FillDirection = Enum.FillDirection.Horizontal
-	upgradeLayout.Padding = UDim.new(0, 14)
+	upgradeLayout.Padding = UDim.new(0, 12)
 	upgradeLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	upgradeLayout.Parent = upgradeRow
-	pad(upgradeRow, 8, 8)
+
 	local upgradePad = Instance.new("UIPadding")
-	upgradePad.PaddingLeft = UDim.new(0, 14)
+	upgradePad.PaddingLeft = UDim.new(0, 12)
+	upgradePad.PaddingTop = UDim.new(0, 10)
+	upgradePad.PaddingBottom = UDim.new(0, 10)
 	upgradePad.Parent = upgradeRow
 
 	self.upgradeLabels = {}
@@ -236,15 +233,15 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 	for _, upgrade in ipairs(UpgradesConfig.upgrades) do
 		local button = Instance.new("TextButton")
 		button.Name = "Upgrade_" .. upgrade.id
-		button.Size = UDim2.fromOffset(320, 84)
-		button.BackgroundColor3 = Color3.fromRGB(28, 44, 70)
+		button.Size = UDim2.fromOffset(324, 92)
+		button.BackgroundColor3 = Color3.fromRGB(26, 42, 68)
 		button.BorderSizePixel = 0
 		button.Font = Enum.Font.GothamBlack
 		button.TextSize = 19
 		button.TextWrapped = true
 		button.TextColor3 = Color3.fromRGB(255, 255, 255)
-		button.Text = string.format("%s  Lv 0/%d  ·  $%d\n%s",
-			string.upper(upgrade.name), upgrade.maxLevel, upgrade.price, upgrade.blurb)
+		button.Text = string.format("%s  Lv 0/%d  ·  %s\n%s",
+			string.upper(upgrade.name), upgrade.maxLevel, money(upgrade.price), upgrade.blurb)
 		button.Parent = upgradeRow
 		corner(button, 12)
 		button.MouseButton1Click:Connect(function()
@@ -255,14 +252,14 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 
 	local lockButton = Instance.new("TextButton")
 	lockButton.Name = "BuyLock"
-	lockButton.Size = UDim2.fromOffset(250, 84)
-	lockButton.BackgroundColor3 = Color3.fromRGB(28, 62, 96)
+	lockButton.Size = UDim2.fromOffset(176, 92)
+	lockButton.BackgroundColor3 = Color3.fromRGB(24, 58, 92)
 	lockButton.BorderSizePixel = 0
 	lockButton.Font = Enum.Font.GothamBlack
 	lockButton.TextSize = 19
 	lockButton.TextWrapped = true
 	lockButton.TextColor3 = Color3.fromRGB(190, 232, 255)
-	lockButton.Text = string.format("BASE LOCK  ·  $%d\n60 s of shield. Blocks thieves.", UpgradesConfig.lockPrice)
+	lockButton.Text = string.format("BASE LOCK\n%s · 60 s", money(UpgradesConfig.lockPrice))
 	lockButton.Parent = upgradeRow
 	corner(lockButton, 12)
 	lockButton.MouseButton1Click:Connect(function()
@@ -273,8 +270,9 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 
 	function self.show()
 		frame.Visible = true
-		frame.Size = UDim2.fromOffset(760, 520)
-		TweenService:Create(frame, TweenInfo.new(0.22, Enum.EasingStyle.Back), { Size = UDim2.fromOffset(880, 600) }):Play()
+		frame.Size = UDim2.fromOffset(760, 540)
+		TweenService:Create(frame, TweenInfo.new(0.22, Enum.EasingStyle.Back),
+			{ Size = UDim2.fromOffset(880, 620) }):Play()
 	end
 
 	function self.hide()
@@ -298,9 +296,12 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 			return
 		end
 		local cash = snapshot.cash or 0
+		local luckLevel = (snapshot.upgrades and snapshot.upgrades.EggLuck) or 0
+
 		for _, egg in ipairs(EggConfig.eggs) do
 			local button = self.eggButtons[egg.id]
 			local card = self.eggCards[egg.id]
+			local oddsLabel = self.eggOdds[egg.id]
 			if button and card then
 				local unlocked = (snapshot.rebirths or 0) >= (egg.requiresRebirth or 0)
 				local affordable = cash >= egg.price
@@ -308,13 +309,17 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 					button.Text = "LOCKED — REBIRTH 1"
 					button.BackgroundColor3 = Color3.fromRGB(70, 76, 92)
 				elseif affordable then
-					button.Text = "HATCH  $" .. egg.price
+					button.Text = "HATCH  " .. money(egg.price)
 					button.BackgroundColor3 = egg.color
 				else
-					button.Text = "NEED $" .. egg.price
+					button.Text = "NEED " .. money(egg.price)
 					button.BackgroundColor3 = Color3.fromRGB(86, 96, 116)
 				end
-				card.BackgroundTransparency = if affordable or not unlocked then 0 else 0.35
+				card.BackgroundTransparency = if affordable or not unlocked then 0 else 0.3
+				if oddsLabel then
+					-- Odds reflect the player's Egg Luck, so an upgrade is visible.
+					oddsLabel.Text = EggConfig.oddsText(egg, luckLevel)
+				end
 			end
 		end
 
@@ -327,11 +332,13 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 				if not price then
 					button.Text = string.format("%s  Lv %d/%d  ·  MAXED\n%s",
 						string.upper(upgrade.name), level, upgrade.maxLevel, upgrade.blurb)
-					button.BackgroundColor3 = Color3.fromRGB(44, 84, 56)
+					button.BackgroundColor3 = Color3.fromRGB(40, 82, 54)
 				else
-					button.Text = string.format("%s  Lv %d/%d  ·  $%d\n%s",
-						string.upper(upgrade.name), level, upgrade.maxLevel, price, upgrade.blurb)
-					button.BackgroundColor3 = if cash >= price then Color3.fromRGB(28, 60, 92) else Color3.fromRGB(40, 44, 58)
+					button.Text = string.format("%s  Lv %d/%d  ·  %s\n%s",
+						string.upper(upgrade.name), level, upgrade.maxLevel, money(price), upgrade.blurb)
+					button.BackgroundColor3 = if cash >= price
+						then Color3.fromRGB(26, 60, 92)
+						else Color3.fromRGB(38, 42, 56)
 				end
 			end
 		end

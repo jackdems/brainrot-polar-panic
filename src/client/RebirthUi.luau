@@ -1,7 +1,12 @@
 --[[ RebirthUi
-	One job: the rebirth panel. The current multiplier, the live income, the next
-	threshold, the pad you gain, the Galaxy Egg unlock, and the button that fires
-	RequestRebirth. This is the panel the progression screenshot wants.
+	One job: the rebirth panel. The current multiplier, the next multiplier, the
+	live cost, the ladder pips, the Galaxy Egg unlock and the button that fires
+	RequestRebirth.
+
+	Docked BOTTOM-RIGHT and short on purpose: the 4-progression capture opens this
+	panel together with the den panel (top-left) and needs a clear band of 3D
+	between them where a Gold/Diamond mutated character stands on its pad. A
+	centred 880-wide panel would bury exactly that.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,15 +29,15 @@ function RebirthUi.new(gui, actions)
 
 	local frame = Instance.new("Frame")
 	frame.Name = "RebirthPanel"
-	frame.AnchorPoint = Vector2.new(0.5, 0.5)
-	frame.Position = UDim2.fromScale(0.5, 0.5)
-	frame.Size = UDim2.fromOffset(880, 560)
-	frame.BackgroundColor3 = Color3.fromRGB(12, 10, 26)
+	frame.AnchorPoint = Vector2.new(1, 1)
+	frame.Position = UDim2.new(1, -14, 1, -14)
+	frame.Size = UDim2.fromOffset(700, 430)
+	frame.BackgroundColor3 = Color3.fromRGB(10, 8, 24)
 	frame.BackgroundTransparency = 0.03
 	frame.BorderSizePixel = 0
 	frame.Visible = false
 	frame.Parent = gui
-	corner(frame, 24)
+	corner(frame, 20)
 
 	local outline = Instance.new("UIStroke")
 	outline.Color = Color3.fromRGB(255, 196, 46)
@@ -41,24 +46,25 @@ function RebirthUi.new(gui, actions)
 
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-	title.Size = UDim2.new(1, -40, 0, 62)
-	title.Position = UDim2.fromOffset(20, 8)
+	title.Size = UDim2.new(1, -110, 0, 46)
+	title.Position = UDim2.fromOffset(16, 8)
 	title.BackgroundTransparency = 1
 	title.Font = Enum.Font.FredokaOne
-	title.TextSize = 46
+	title.TextSize = 30
 	title.TextColor3 = Color3.fromRGB(255, 214, 92)
-	title.Text = "REBIRTH — RESET EVERYTHING, KEEP THE POWER"
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Text = "REBIRTH — KEEP THE POWER"
 	title.Parent = frame
 
 	local close = Instance.new("TextButton")
 	close.Name = "Close"
-	close.Size = UDim2.fromOffset(110, 42)
+	close.Size = UDim2.fromOffset(84, 36)
 	close.AnchorPoint = Vector2.new(1, 0)
-	close.Position = UDim2.new(1, -16, 0, 14)
+	close.Position = UDim2.new(1, -12, 0, 12)
 	close.BackgroundColor3 = Color3.fromRGB(220, 70, 70)
 	close.BorderSizePixel = 0
 	close.Font = Enum.Font.GothamBlack
-	close.TextSize = 20
+	close.TextSize = 18
 	close.TextColor3 = Color3.fromRGB(255, 255, 255)
 	close.Text = "CLOSE"
 	close.Parent = frame
@@ -68,15 +74,15 @@ function RebirthUi.new(gui, actions)
 	end)
 
 	-- Three stat tiles along the top.
-	local function statTile(name, offsetX, caption, accent)
+	local function statTile(name, offsetX, width, caption, accent)
 		local tile = Instance.new("Frame")
 		tile.Name = name
-		tile.Position = UDim2.fromOffset(24 + offsetX, 84)
-		tile.Size = UDim2.fromOffset(268, 112)
-		tile.BackgroundColor3 = Color3.fromRGB(24, 20, 46)
+		tile.Position = UDim2.fromOffset(16 + offsetX, 60)
+		tile.Size = UDim2.fromOffset(width, 96)
+		tile.BackgroundColor3 = Color3.fromRGB(22, 18, 44)
 		tile.BorderSizePixel = 0
 		tile.Parent = frame
-		corner(tile, 14)
+		corner(tile, 12)
 
 		local ring = Instance.new("UIStroke")
 		ring.Color = accent
@@ -84,22 +90,23 @@ function RebirthUi.new(gui, actions)
 		ring.Parent = tile
 
 		local captionLabel = Instance.new("TextLabel")
-		captionLabel.Size = UDim2.new(1, -16, 0, 26)
-		captionLabel.Position = UDim2.fromOffset(8, 6)
+		captionLabel.Size = UDim2.new(1, -14, 0, 22)
+		captionLabel.Position = UDim2.fromOffset(7, 4)
 		captionLabel.BackgroundTransparency = 1
 		captionLabel.Font = Enum.Font.GothamBlack
-		captionLabel.TextSize = 17
-		captionLabel.TextColor3 = Color3.fromRGB(180, 190, 216)
+		captionLabel.TextSize = 14
+		captionLabel.TextColor3 = Color3.fromRGB(170, 180, 208)
 		captionLabel.Text = caption
 		captionLabel.Parent = tile
 
 		local value = Instance.new("TextLabel")
 		value.Name = "Value"
-		value.Size = UDim2.new(1, -16, 0, 66)
-		value.Position = UDim2.fromOffset(8, 34)
+		value.Size = UDim2.new(1, -14, 0, 60)
+		value.Position = UDim2.fromOffset(7, 28)
 		value.BackgroundTransparency = 1
 		value.Font = Enum.Font.FredokaOne
-		value.TextSize = 44
+		value.TextSize = 40
+		value.TextScaled = true
 		value.TextColor3 = accent
 		value.Text = "—"
 		value.Parent = tile
@@ -107,78 +114,80 @@ function RebirthUi.new(gui, actions)
 		return tile, value
 	end
 
-	local _, currentValue = statTile("CurrentTile", 0, "CURRENT MULTIPLIER", Color3.fromRGB(255, 214, 92))
-	local _, nextValue = statTile("NextTile", 292, "AFTER THIS REBIRTH", Color3.fromRGB(126, 255, 176))
-	local _, costValue = statTile("CostTile", 584, "REBIRTH COST", Color3.fromRGB(255, 176, 240))
+	local _, currentValue = statTile("CurrentTile", 0, 212, "CURRENT MULTIPLIER", Color3.fromRGB(255, 214, 92))
+	local _, nextValue = statTile("NextTile", 228, 212, "AFTER THIS REBIRTH", Color3.fromRGB(126, 255, 176))
+	local _, costValue = statTile("CostTile", 456, 212, "REBIRTH COST", Color3.fromRGB(255, 176, 240))
 
 	-- The ladder strip: five pips, one per rebirth.
 	local ladder = Instance.new("Frame")
 	ladder.Name = "Ladder"
-	ladder.Position = UDim2.fromOffset(24, 214)
-	ladder.Size = UDim2.fromOffset(832, 48)
-	ladder.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
+	ladder.Position = UDim2.fromOffset(16, 168)
+	ladder.Size = UDim2.fromOffset(668, 40)
+	ladder.BackgroundColor3 = Color3.fromRGB(18, 16, 38)
 	ladder.BorderSizePixel = 0
 	ladder.Parent = frame
-	corner(ladder, 12)
+	corner(ladder, 10)
 
 	self.pips = {}
 	local pipLayout = Instance.new("UIListLayout")
 	pipLayout.FillDirection = Enum.FillDirection.Horizontal
-	pipLayout.Padding = UDim.new(0, 10)
+	pipLayout.Padding = UDim.new(0, 8)
 	pipLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	pipLayout.Parent = ladder
 	local pipPad = Instance.new("UIPadding")
-	pipPad.PaddingLeft = UDim.new(0, 12)
+	pipPad.PaddingLeft = UDim.new(0, 10)
 	pipPad.Parent = ladder
 
 	for index = 1, RebirthConfig.maxRebirths do
 		local pip = Instance.new("TextLabel")
 		pip.Name = "Pip_" .. index
-		pip.Size = UDim2.fromOffset(150, 32)
-		pip.BackgroundColor3 = Color3.fromRGB(44, 40, 66)
+		pip.Size = UDim2.fromOffset(120, 28)
+		pip.BackgroundColor3 = Color3.fromRGB(40, 36, 62)
 		pip.BorderSizePixel = 0
 		pip.Font = Enum.Font.GothamBlack
-		pip.TextSize = 17
+		pip.TextSize = 15
 		pip.TextColor3 = Color3.fromRGB(150, 160, 190)
 		pip.Text = string.format("R%d  x%d", index, 2 ^ index)
 		pip.Parent = ladder
-		corner(pip, 8)
+		corner(pip, 7)
 		self.pips[index] = pip
 	end
 
 	-- What a rebirth costs you and what it buys.
 	local body = Instance.new("TextLabel")
 	body.Name = "Body"
-	body.Position = UDim2.fromOffset(28, 274)
-	body.Size = UDim2.fromOffset(824, 114)
+	body.Position = UDim2.fromOffset(18, 216)
+	body.Size = UDim2.fromOffset(664, 76)
 	body.BackgroundTransparency = 1
 	body.Font = Enum.Font.GothamMedium
-	body.TextSize = 20
+	body.TextSize = 17
 	body.TextWrapped = true
 	body.TextXAlignment = Enum.TextXAlignment.Left
 	body.TextYAlignment = Enum.TextYAlignment.Top
-	body.TextColor3 = Color3.fromRGB(206, 214, 236)
+	body.TextColor3 = Color3.fromRGB(198, 208, 232)
 	body.Text = ""
 	body.Parent = frame
 	self.body = body
 
 	local rebirthButton = Instance.new("TextButton")
 	rebirthButton.Name = "DoRebirth"
-	rebirthButton.Size = UDim2.new(1, -48, 0, 92)
+	rebirthButton.Size = UDim2.new(1, -36, 0, 84)
 	rebirthButton.AnchorPoint = Vector2.new(0.5, 1)
-	rebirthButton.Position = UDim2.new(0.5, 0, 1, -24)
+	rebirthButton.Position = UDim2.new(0.5, 0, 1, -18)
 	rebirthButton.BackgroundColor3 = Color3.fromRGB(255, 196, 46)
 	rebirthButton.BorderSizePixel = 0
 	rebirthButton.Font = Enum.Font.FredokaOne
-	rebirthButton.TextSize = 34
-	rebirthButton.TextColor3 = Color3.fromRGB(20, 12, 4)
+	rebirthButton.TextSize = 30
+	rebirthButton.TextColor3 = Color3.fromRGB(22, 14, 4)
 	rebirthButton.Text = "REBIRTH NOW"
 	rebirthButton.Parent = frame
-	corner(rebirthButton, 16)
+	corner(rebirthButton, 14)
 	rebirthButton.MouseButton1Click:Connect(function()
 		actions.rebirth()
 	end)
 	self.rebirthButton = rebirthButton
+
+	-- -------------------------------------------------------- behaviour
 
 	function self.show()
 		frame.Visible = true
@@ -213,10 +222,10 @@ function RebirthUi.new(gui, actions)
 				pip.BackgroundColor3 = Color3.fromRGB(255, 196, 46)
 				pip.TextColor3 = Color3.fromRGB(28, 16, 4)
 			elseif index == rebirths + 1 then
-				pip.BackgroundColor3 = Color3.fromRGB(84, 68, 20)
+				pip.BackgroundColor3 = Color3.fromRGB(88, 70, 20)
 				pip.TextColor3 = Color3.fromRGB(255, 226, 150)
 			else
-				pip.BackgroundColor3 = Color3.fromRGB(44, 40, 66)
+				pip.BackgroundColor3 = Color3.fromRGB(40, 36, 62)
 				pip.TextColor3 = Color3.fromRGB(150, 160, 190)
 			end
 		end
@@ -236,15 +245,14 @@ function RebirthUi.new(gui, actions)
 			rebirthButton.Text = string.format("REBIRTH FOR x%d  ·  $%s", nextMultiplier, self.shortNumber(cost))
 			rebirthButton.BackgroundColor3 = Color3.fromRGB(255, 196, 46)
 		else
-			rebirthButton.Text = string.format("NEED $%s  ·  you have $%s", self.shortNumber(cost), self.shortNumber(snapshot.cash or 0))
+			rebirthButton.Text = string.format("NEED $%s  ·  you have $%s",
+				self.shortNumber(cost), self.shortNumber(snapshot.cash or 0))
 			rebirthButton.BackgroundColor3 = Color3.fromRGB(74, 66, 40)
 		end
 
 		self.body.Text = string.format(
-			"A rebirth wipes your cash and every character on your pads, then pays you back forever.\n" ..
-			"· Income x%d becomes x%d on everything you own  ·  +1 pad socket (now %d unlocked)\n" ..
-			"· The Galaxy Egg opens at rebirth 1: Epic 30%% · Legendary 45%% · Mythic 20%% · Secret 5%%\n" ..
-			"· %d of %d rebirths used  ·  %d brainrots in the cast to chase",
+			"A rebirth wipes your cash and every character on your pads, then pays you back forever.\n"
+				.. "Income x%d becomes x%d  ·  +1 pad socket (now %d unlocked)  ·  %d of %d rebirths used  ·  %d brainrots to chase",
 			multiplier, nextMultiplier, (snapshot.unlockedPads or 6) + 1,
 			rebirths, RebirthConfig.maxRebirths, CastConfig.count)
 	end
@@ -252,9 +260,9 @@ function RebirthUi.new(gui, actions)
 	function self.shortNumber(value)
 		local number = math.floor(value or 0)
 		if number >= 1e9 then
-			return string.format("%.1fB", number / 1e9)
+			return string.format("%.2fB", number / 1e9)
 		elseif number >= 1e6 then
-			return string.format("%.1fM", number / 1e6)
+			return string.format("%.2fM", number / 1e6)
 		elseif number >= 1e4 then
 			return string.format("%.1fK", number / 1e3)
 		end

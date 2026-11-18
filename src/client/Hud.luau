@@ -1,10 +1,15 @@
 --[[ Hud
 	One job: the money readout. A big animated cash counter, the $/s rate, the
-	rebirth multiplier, the lock badge and the carried-character strip. Nothing
-	here decides anything — it renders what StateCache holds.
+	rebirth multiplier, the lock badge, the carried strip and the hotbar buttons.
+	Nothing here decides anything — it renders what the server pushed.
+
+	Layout rule learned from the captures: the cash card lives top-LEFT under the
+	Roblox menu strip and is deliberately large (72 px digits), because the cover
+	thumbnail is scaled down and this number is what sells "you are getting rich".
 ]]
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Hud = {}
@@ -35,7 +40,6 @@ local function label(parent, name, size, position, textSize, color)
 	text.Font = Enum.Font.FredokaOne
 	text.TextSize = textSize
 	text.TextColor3 = color or Color3.fromRGB(255, 255, 255)
-	text.TextScaled = false
 	text.Text = ""
 	text.Parent = parent
 	return text
@@ -44,84 +48,87 @@ end
 function Hud.new(gui)
 	local self = {}
 
-	-- The cash card sits top-centre-left, clear of Roblox's own menu buttons in
-	-- the top-left corner of the play view.
+	-- ------------------------------------------------------------ cash card
+	-- Big, top-left, clear of the Roblox menu buttons.
 	local card = Instance.new("Frame")
 	card.Name = "CashCard"
 	card.AnchorPoint = Vector2.new(0, 0)
-	card.Position = UDim2.new(0, 24, 0, 92)
-	card.Size = UDim2.fromOffset(360, 138)
-	card.BackgroundColor3 = Color3.fromRGB(8, 16, 30)
-	card.BackgroundTransparency = 0.12
+	card.Position = UDim2.new(0, 22, 0, 94)
+	card.Size = UDim2.fromOffset(430, 164)
+	card.BackgroundColor3 = Color3.fromRGB(6, 14, 26)
+	card.BackgroundTransparency = 0.1
 	card.BorderSizePixel = 0
 	card.Parent = gui
 	corner(card, 18)
 	stroke(card, Color3.fromRGB(126, 255, 176), 4)
 
-	local cashLabel = label(card, "Cash", UDim2.new(1, -24, 0, 62), UDim2.fromOffset(14, 8), 56,
+	local cashLabel = label(card, "Cash", UDim2.new(1, -26, 0, 74), UDim2.fromOffset(16, 8), 66,
 		Color3.fromRGB(126, 255, 176))
 	cashLabel.Font = Enum.Font.FredokaOne
 	cashLabel.TextXAlignment = Enum.TextXAlignment.Left
+	cashLabel.TextStrokeColor3 = Color3.fromRGB(4, 20, 10)
+	cashLabel.TextStrokeTransparency = 0.4
 	cashLabel.Text = "$100"
 
-	local rateLabel = label(card, "Rate", UDim2.new(0.6, -18, 0, 34), UDim2.fromOffset(16, 74), 26,
+	local rateLabel = label(card, "Rate", UDim2.new(0.62, -18, 0, 40), UDim2.fromOffset(18, 88), 30,
 		Color3.fromRGB(255, 236, 130))
 	rateLabel.Font = Enum.Font.GothamBlack
 	rateLabel.TextXAlignment = Enum.TextXAlignment.Left
 	rateLabel.Text = "$0 /s"
 
-	local multiplierLabel = label(card, "Multiplier", UDim2.new(0.4, -14, 0, 34), UDim2.new(0.6, 8, 0, 74), 24,
+	local multiplierLabel = label(card, "Multiplier", UDim2.new(0.38, -14, 0, 40), UDim2.new(0.62, 6, 0, 88), 26,
 		Color3.fromRGB(255, 176, 240))
 	multiplierLabel.Font = Enum.Font.GothamBlack
 	multiplierLabel.Text = "x1"
 
-	local lockLabel = label(card, "Lock", UDim2.new(1, -24, 0, 26), UDim2.fromOffset(16, 108), 20,
+	local lockLabel = label(card, "Lock", UDim2.new(1, -26, 0, 30), UDim2.fromOffset(18, 130), 22,
 		Color3.fromRGB(120, 220, 255))
 	lockLabel.Font = Enum.Font.GothamBlack
 	lockLabel.TextXAlignment = Enum.TextXAlignment.Left
 	lockLabel.Text = ""
 
-	-- The carried strip: what is in your hands right now.
+	-- ------------------------------------------------------------ carried strip
 	local carriedCard = Instance.new("Frame")
 	carriedCard.Name = "CarriedCard"
 	carriedCard.AnchorPoint = Vector2.new(0.5, 0)
 	carriedCard.Position = UDim2.new(0.5, 0, 0, 88)
-	carriedCard.Size = UDim2.fromOffset(520, 64)
+	carriedCard.Size = UDim2.fromOffset(580, 70)
 	carriedCard.BackgroundColor3 = Color3.fromRGB(40, 26, 8)
-	carriedCard.BackgroundTransparency = 0.15
+	carriedCard.BackgroundTransparency = 0.12
 	carriedCard.BorderSizePixel = 0
 	carriedCard.Visible = false
 	carriedCard.Parent = gui
 	corner(carriedCard, 14)
 	stroke(carriedCard, Color3.fromRGB(255, 196, 46), 4)
 
-	local carriedLabel = label(carriedCard, "Carried", UDim2.new(1, -20, 1, -8), UDim2.fromOffset(10, 4), 30,
+	local carriedLabel = label(carriedCard, "Carried", UDim2.new(1, -20, 1, -8), UDim2.fromOffset(10, 4), 32,
 		Color3.fromRGB(255, 236, 168))
 	carriedLabel.Font = Enum.Font.GothamBlack
 	carriedLabel.Text = "CARRYING"
 
-	-- Context hint right above the hotbar: "E — HATCH THE NOOB EGG" etc.
+	-- ------------------------------------------------------------ context hint
 	local hint = Instance.new("TextLabel")
 	hint.Name = "ContextHint"
 	hint.AnchorPoint = Vector2.new(0.5, 1)
-	hint.Position = UDim2.new(0.5, 0, 1, -132)
-	hint.Size = UDim2.fromOffset(760, 46)
-	hint.BackgroundColor3 = Color3.fromRGB(8, 16, 30)
-	hint.BackgroundTransparency = 0.25
+	hint.Position = UDim2.new(0.5, 0, 1, -138)
+	hint.Size = UDim2.fromOffset(820, 50)
+	hint.BackgroundColor3 = Color3.fromRGB(6, 14, 26)
+	hint.BackgroundTransparency = 0.15
 	hint.BorderSizePixel = 0
 	hint.Font = Enum.Font.GothamBlack
-	hint.TextSize = 26
+	hint.TextSize = 28
 	hint.TextColor3 = Color3.fromRGB(255, 255, 255)
 	hint.Text = ""
 	hint.Parent = gui
 	corner(hint, 12)
+	stroke(hint, Color3.fromRGB(90, 140, 200), 2)
 
-	-- The hotbar: three buttons the mouse can reach too.
+	-- ------------------------------------------------------------ hotbar
 	local hotbar = Instance.new("Frame")
 	hotbar.Name = "Hotbar"
 	hotbar.AnchorPoint = Vector2.new(0.5, 1)
 	hotbar.Position = UDim2.new(0.5, 0, 1, -24)
-	hotbar.Size = UDim2.fromOffset(700, 92)
+	hotbar.Size = UDim2.fromOffset(700, 96)
 	hotbar.BackgroundTransparency = 1
 	hotbar.Parent = gui
 
@@ -136,11 +143,11 @@ function Hud.new(gui)
 	local function addButton(name, text, keyHint, color, onClick)
 		local button = Instance.new("TextButton")
 		button.Name = name
-		button.Size = UDim2.fromOffset(212, 84)
+		button.Size = UDim2.fromOffset(214, 88)
 		button.BackgroundColor3 = color
 		button.BorderSizePixel = 0
 		button.Font = Enum.Font.FredokaOne
-		button.TextSize = 22
+		button.TextSize = 24
 		button.TextColor3 = Color3.fromRGB(10, 14, 26)
 		button.Text = text .. "\n[" .. keyHint .. "]"
 		button.AutoButtonColor = true
@@ -191,22 +198,23 @@ function Hud.new(gui)
 		self.rollTowards(targetCash)
 
 		local perSecond = snapshot.income or 0
-		rateLabel.Text = string.format("$%s /s", self.formatNumber(perSecond))
 		if (snapshot.eventMultiplier or 1) > 1 then
-			rateLabel.Text = string.format("$%s /s  x%d EVENT", self.formatNumber(perSecond), snapshot.eventMultiplier)
+			rateLabel.Text = string.format("%s /s  x%d EVENT", self.formatNumber(perSecond), snapshot.eventMultiplier)
 			rateLabel.TextColor3 = Color3.fromRGB(255, 214, 92)
 		else
+			rateLabel.Text = string.format("%s /s", self.formatNumber(perSecond))
 			rateLabel.TextColor3 = Color3.fromRGB(255, 236, 130)
 		end
 
-		multiplierLabel.Text = "x" .. (snapshot.multiplier or 1) .. " REBIRTH"
+		multiplierLabel.Text = "x" .. (snapshot.multiplier or 1)
 
 		if snapshot.locked then
 			lockLabel.Text = string.format("DEN LOCKED  %d s", snapshot.lockSecondsLeft or 0)
 			lockLabel.TextColor3 = Color3.fromRGB(120, 220, 255)
 		else
-			lockLabel.Text = string.format("%d/%d PADS", snapshot.unlockedPads or 6, snapshot.maxPads or 16)
-			lockLabel.TextColor3 = Color3.fromRGB(150, 170, 200)
+			lockLabel.Text = string.format("%d/%d PADS  ·  %d PLACED",
+				snapshot.unlockedPads or 6, snapshot.maxPads or 16, snapshot.placedCount or 0)
+			lockLabel.TextColor3 = Color3.fromRGB(150, 180, 210)
 		end
 
 		if snapshot.carried then
@@ -228,15 +236,15 @@ function Hud.new(gui)
 	function self.pulseCash()
 		local original = cashLabel.TextColor3
 		cashLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		TweenService:Create(cashLabel, TweenInfo.new(0.4), { TextColor3 = original }):Play()
+		TweenService:Create(cashLabel, TweenInfo.new(0.35), { TextColor3 = original }):Play()
 	end
 
 	function self.formatNumber(value)
 		local number = math.floor(value or 0)
 		if number >= 1e9 then
-			return string.format("%.1fB", number / 1e9)
+			return string.format("%.2fB", number / 1e9)
 		elseif number >= 1e6 then
-			return string.format("%.1fM", number / 1e6)
+			return string.format("%.2fM", number / 1e6)
 		elseif number >= 1e4 then
 			return string.format("%.1fK", number / 1e3)
 		end
@@ -244,10 +252,9 @@ function Hud.new(gui)
 	end
 
 	-- Cash text rides a RenderStepped so the counter rolls, not jumps.
-	local RunService = game:GetService("RunService")
 	RunService.RenderStepped:Connect(function()
 		if self.rollTarget then
-			local elapsed = math.min(1, (os.clock() - (self.rollAt or 0)) / 0.3)
+			local elapsed = math.min(1, (os.clock() - (self.rollAt or 0)) / 0.28)
 			self.shownCash = self.rollStart + (self.rollTarget - self.rollStart) * elapsed
 			if elapsed >= 1 then
 				self.shownCash = self.rollTarget
@@ -257,6 +264,7 @@ function Hud.new(gui)
 	end)
 
 	self.cashLabel = cashLabel
+	self.rateLabel = rateLabel
 	self.hintLabel = hint
 	return self
 end

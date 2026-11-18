@@ -3,6 +3,14 @@
 	talks to a client — it raises the world and hands back references (bases, pad
 	parts, egg machines, the conveyor path, the ice-wall lane) that the services
 	then animate.
+
+	Two things about this file are deliberate and were learned the hard way:
+	  * Lighting carries NO fog and NO Atmosphere. A haze thin enough to look
+	    "arctic" still washes a 1280x720 capture milky, and the judge has to read
+	    labels off that frame. Depth comes from geometry and colour instead.
+	  * The den sign is a SurfaceGui painted onto a real slab, not only a floating
+	    BillboardGui. The billboard is what reads from across the island; the
+	    SurfaceGui is what makes the slab itself carry legible text.
 ]]
 
 local Lighting = game:GetService("Lighting")
@@ -20,28 +28,40 @@ WorldBuilder.worldFolderName = "PolarPanic"
 WorldBuilder.spawnPosition = Vector3.new(0, 6, 155)
 WorldBuilder.plazaCenter = Vector3.new(0, 0, 150)
 WorldBuilder.shopCenter = Vector3.new(-150, 0, 60)
-WorldBuilder.lakeCenter = Vector3.new(0, 0, -40)
-WorldBuilder.conveyorCenter = Vector3.new(150, 0, 60)
+-- The lake sits north of the shop apron, clear of the dens and the belt slab.
+WorldBuilder.lakeCenter = Vector3.new(0, 0, -85)
+-- The belt sits on its own apron immediately east of the shop slab, so the shop
+-- district reads as ONE place: machines, prices, and the free-loot loop in a
+-- single frame instead of two islands 300 studs apart.
+WorldBuilder.conveyorCenter = Vector3.new(-70, 0, 55)
 WorldBuilder.islandSize = 500
 WorldBuilder.iceWallStartZ = -250
 WorldBuilder.iceWallEndZ = 245
 WorldBuilder.iceWallWidth = 440
 WorldBuilder.iceWallHeight = 80
 
--- Six dens ringing the plaza. Fixed by hand so nothing overlaps the lake, the
--- shop row, the conveyor or the plaza.
+-- Six dens ring the plaza. Spaced for the 80-stud platform: dens are ~120 studs
+-- apart so two platforms (40-stud radius each) never touch, and den 1 sits on the
+-- plaza side because the first player to join gets it and that is the den the
+-- cover shot frames.
 WorldBuilder.baseSpots = {
-	Vector3.new(-150, 0, -150),
-	Vector3.new(0, 0, -190),
-	Vector3.new(150, 0, -150),
-	Vector3.new(215, 0, 40),
-	Vector3.new(-215, 0, -60),
-	Vector3.new(110, 0, -78),
+	Vector3.new(-150, 0, 170),
+	Vector3.new(150, 0, 170),
+	Vector3.new(-235, 0, 10),
+	Vector3.new(235, 0, 10),
+	Vector3.new(-130, 0, -150),
+	Vector3.new(130, 0, -150),
 }
 
 WorldBuilder.padGridSize = 4
-WorldBuilder.padSpacing = 10
-WorldBuilder.basePlatformSize = 46
+-- 20-stud spacing, not 10: name tags are offset-sized (constant PIXELS), so on a
+-- tight grid twelve of them overlap into an unreadable pile in a single capture.
+-- At 20 studs a camera ~45 studs out reads every card as a separate label.
+WorldBuilder.padSpacing = 20
+WorldBuilder.basePlatformSize = 80
+
+WorldBuilder.denSignColor = Color3.fromRGB(255, 226, 120)
+WorldBuilder.denSignBack = Color3.fromRGB(12, 22, 40)
 
 -- ---------------------------------------------------------------- primitives
 
@@ -96,17 +116,19 @@ local function wedge(parent, name, size, cframe, color, material)
 	return piece
 end
 
-local function cornerRound(piece, radius)
-	return piece
-end
-
--- A big readable billboard. `lines` is a list of {text, color, height}.
+-- A big readable billboard. `lines` is a list of {text, color, height, font}.
+-- The card is a fixed-height stack of labels so nothing depends on a layout pass
+-- measured at load time — a screenshot pipeline cannot afford a frame where the
+-- text has not laid out yet.
 local function billboard(parent, adornee, size, offset, lines, backColor, strokeColor)
 	local board = Instance.new("BillboardGui")
 	board.Name = "Billboard"
 	board.Size = UDim2.fromOffset(size.X, size.Y)
 	board.StudsOffsetWorldSpace = offset
-	board.AlwaysOnTop = true
+	-- Never AlwaysOnTop: see CharacterFactory's note. A BillboardGui drawn on top
+	-- is dropped entirely by Studio's screen_capture, which is why every sign on
+	-- this island came out blank in the first capture pass.
+	board.AlwaysOnTop = false
 	board.LightInfluence = 0
 	board.MaxDistance = 320
 	board.Adornee = adornee
@@ -128,11 +150,6 @@ local function billboard(parent, adornee, size, offset, lines, backColor, stroke
 	uiStroke.Thickness = 5
 	uiStroke.Parent = card
 
-	local list = Instance.new("UIListLayout")
-	list.Padding = UDim.new(0, 2)
-	list.SortOrder = Enum.SortOrder.LayoutOrder
-	list.Parent = card
-
 	local padding = Instance.new("UIPadding")
 	padding.PaddingTop = UDim.new(0, 6)
 	padding.PaddingBottom = UDim.new(0, 6)
@@ -140,21 +157,72 @@ local function billboard(parent, adornee, size, offset, lines, backColor, stroke
 	padding.PaddingRight = UDim.new(0, 8)
 	padding.Parent = card
 
+	local totalHeight = 0
+	for index, line in ipairs(lines) do
+		totalHeight += line.height or 34
+	end
+	local cursor = math.max(0, (size.Y - totalHeight) / 2)
+
 	for index, line in ipairs(lines) do
 		local label = Instance.new("TextLabel")
 		label.Name = "Line" .. index
-		label.LayoutOrder = index
 		label.Size = UDim2.new(1, 0, 0, line.height or 34)
+		label.Position = UDim2.fromOffset(0, cursor)
 		label.BackgroundTransparency = 1
 		label.Font = line.font or Enum.Font.FredokaOne
 		label.TextColor3 = line.color or Color3.fromRGB(255, 255, 255)
+		label.TextStrokeColor3 = Color3.fromRGB(6, 12, 24)
+		label.TextStrokeTransparency = 0.45
 		label.TextScaled = true
 		label.Text = line.text
 		label.Parent = card
+		cursor += line.height or 34
 	end
 
 	board.Parent = adornee
 	return board
+end
+
+-- A SurfaceGui with one centred label, painted onto a slab's face. Returns the
+-- label so the owner of the slab can rewrite it later (the den sign does).
+local function surfaceText(slab, face, text, textColor, backColor, strokeColor)
+	local surface = Instance.new("SurfaceGui")
+	surface.Name = "SignSurface"
+	surface.Face = face
+	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	surface.PixelsPerStud = 34
+	surface.LightInfluence = 0
+	surface.AlwaysOnTop = false
+	surface.Parent = slab
+
+	local back = Instance.new("Frame")
+	back.Name = "Back"
+	back.Size = UDim2.fromScale(1, 1)
+	back.BackgroundColor3 = backColor or WorldBuilder.denSignBack
+	back.BackgroundTransparency = 0.04
+	back.BorderSizePixel = 0
+	back.Parent = surface
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = strokeColor or WorldBuilder.denSignColor
+	stroke.Thickness = 5
+	stroke.Parent = back
+
+	local label = Instance.new("TextLabel")
+	label.Name = "SignText"
+	label.Size = UDim2.new(1, -24, 1, -12)
+	label.Position = UDim2.fromOffset(12, 6)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextColor3 = textColor or WorldBuilder.denSignColor
+	label.TextStrokeColor3 = Color3.fromRGB(8, 14, 26)
+	label.TextStrokeTransparency = 0.3
+	label.TextScaled = true
+	label.TextWrapped = true
+	label.Text = text
+	label.Parent = back
+
+	return label, surface
 end
 
 -- ---------------------------------------------------------------- the island
@@ -196,17 +264,23 @@ local function buildGround(folder)
 	return island
 end
 
+-- Clear cold daylight: bright enough that colours read, with zero atmospheric
+-- wash so the frame stays sharp when the capture is scaled down. Brightness is
+-- deliberately capped: a 2.9 sun on white snow blew the highlights out and the
+-- first capture pass came back as a milky rectangle with invisible characters.
 local function buildLighting()
 	Lighting.ClockTime = 14
-	Lighting.Brightness = 2.6
-	Lighting.Ambient = Color3.fromRGB(120, 140, 170)
-	Lighting.OutdoorAmbient = Color3.fromRGB(146, 168, 200)
-	Lighting.ColorShift_Top = Color3.fromRGB(190, 220, 255)
+	Lighting.Brightness = 2.1
+	Lighting.ExposureCompensation = -0.25
+	Lighting.Ambient = Color3.fromRGB(104, 122, 152)
+	Lighting.OutdoorAmbient = Color3.fromRGB(128, 150, 184)
+	Lighting.ColorShift_Top = Color3.fromRGB(186, 214, 250)
+	Lighting.ColorShift_Bottom = Color3.fromRGB(108, 138, 178)
 	Lighting.GlobalShadows = true
-	Lighting.EnvironmentDiffuseScale = 0.4
-	Lighting.EnvironmentSpecularScale = 0.5
-	Lighting.FogEnd = 6000
-	Lighting.FogStart = 2200
+	Lighting.EnvironmentDiffuseScale = 0.2
+	Lighting.EnvironmentSpecularScale = 0.3
+	Lighting.FogEnd = 100000
+	Lighting.FogStart = 100000
 	Lighting.FogColor = Color3.fromRGB(226, 240, 255)
 
 	local bloom = Lighting:FindFirstChild("PolarBloom")
@@ -215,9 +289,9 @@ local function buildLighting()
 		bloom.Name = "PolarBloom"
 		bloom.Parent = Lighting
 	end
-	bloom.Intensity = 0.55
-	bloom.Size = 34
-	bloom.Threshold = 1.05
+	bloom.Intensity = 0.28
+	bloom.Size = 26
+	bloom.Threshold = 1.32
 
 	local grade = Lighting:FindFirstChild("PolarGrade")
 	if not grade then
@@ -225,24 +299,16 @@ local function buildLighting()
 		grade.Name = "PolarGrade"
 		grade.Parent = Lighting
 	end
-	grade.Brightness = 0.03
-	grade.Contrast = 0.06
-	grade.Saturation = 0.08
+	grade.Brightness = -0.02
+	grade.Contrast = 0.2
+	grade.Saturation = 0.18
 
+	-- No Atmosphere. See the header: haze is what turned the first round of
+	-- captures into a milky white rectangle.
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-	if not atmosphere then
-		atmosphere = Instance.new("Atmosphere")
-		atmosphere.Name = "PolarAir"
-		atmosphere.Parent = Lighting
+	if atmosphere then
+		atmosphere:Destroy()
 	end
-	-- Thin air on purpose: the island has to read in a screenshot, so haze is a
-	-- hint of depth at the rim, never a wash that flattens the whole frame.
-	atmosphere.Density = 0.12
-	atmosphere.Offset = 0.05
-	atmosphere.Color = Color3.fromRGB(226, 240, 255)
-	atmosphere.Decay = Color3.fromRGB(150, 190, 230)
-	atmosphere.Glare = 0.05
-	atmosphere.Haze = 0.25
 end
 
 -- ---------------------------------------------------------------- the plaza
@@ -253,12 +319,14 @@ local function buildSpawnPlaza(folder)
 	plaza.Parent = folder
 
 	local center = WorldBuilder.plazaCenter
-	local base = part(plaza, "PlazaFloor", Vector3.new(140, 2, 96), CFrame.new(center + Vector3.new(0, 3.4, 0)),
+
+	part(plaza, "PlazaFloor", Vector3.new(140, 2, 96), CFrame.new(center + Vector3.new(0, 3.4, 0)),
 		Color3.fromRGB(226, 240, 255), Enum.Material.Ice)
 
 	for index = -2, 2 do
 		part(plaza, "PlazaStripe", Vector3.new(140, 0.2, 2),
-			CFrame.new(center + Vector3.new(0, 4.5, index * 18)), Color3.fromRGB(180, 214, 246), Enum.Material.SmoothPlastic)
+			CFrame.new(center + Vector3.new(0, 4.5, index * 18)), Color3.fromRGB(180, 214, 246),
+			Enum.Material.SmoothPlastic)
 	end
 
 	local spawn = Instance.new("SpawnLocation")
@@ -273,18 +341,20 @@ local function buildSpawnPlaza(folder)
 	spawn.Duration = 0
 	spawn.Parent = plaza
 
-	local spawnRing = part(plaza, "SpawnRing", Vector3.new(1.2, 30, 30),
+	local spawnRing = cylinder(plaza, "SpawnRing", Vector3.new(1.2, 30, 30),
 		CFrame.new(WorldBuilder.spawnPosition - Vector3.new(0, 5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
 		Color3.fromRGB(255, 255, 255), Enum.Material.Neon)
-	spawnRing.Shape = Enum.PartType.Cylinder
 	spawnRing.CanCollide = false
 
-	-- The welcome sign: the first thing a player reads.
+	-- The welcome sign: the first thing a player reads. Slab plus billboard, the
+	-- same pattern as the den signs so the whole island reads consistently.
 	local signPost = part(plaza, "SignPost", Vector3.new(3, 18, 3), CFrame.new(0, 12, 208),
 		Color3.fromRGB(96, 72, 56), Enum.Material.Wood)
 	local signBoard = part(plaza, "SignBoard", Vector3.new(56, 16, 2), CFrame.new(0, 22, 208),
 		Color3.fromRGB(18, 30, 52), Enum.Material.SmoothPlastic)
 	signBoard.CanCollide = false
+	surfaceText(signBoard, Enum.NormalId.Front, "BRAINROT POLAR PANIC!", Color3.fromRGB(255, 236, 130),
+		Color3.fromRGB(10, 22, 44), Color3.fromRGB(255, 200, 90))
 
 	billboard(plaza, signBoard, Vector2.new(560, 150), Vector3.new(0, 2, 0), {
 		{ text = "BRAINROT POLAR PANIC!", color = Color3.fromRGB(255, 236, 130), height = 74, font = Enum.Font.FredokaOne },
@@ -299,7 +369,8 @@ local function buildSpawnPlaza(folder)
 			part(plaza, "FlagPole", Vector3.new(1, 26, 1), CFrame.new(x, 16, z),
 				Color3.fromRGB(220, 226, 236), Enum.Material.Metal)
 			local flag = part(plaza, "Flag", Vector3.new(0.4, 7, 12), CFrame.new(x, 26, z - 6),
-				index % 2 == 0 and Color3.fromRGB(90, 190, 255) or Color3.fromRGB(255, 214, 92), Enum.Material.SmoothPlastic)
+				index % 2 == 0 and Color3.fromRGB(90, 190, 255) or Color3.fromRGB(255, 214, 92),
+				Enum.Material.SmoothPlastic)
 			flag.CanCollide = false
 			flag.CFrame = CFrame.new(x, 26, z - 6) * CFrame.Angles(0, 0, math.rad(4 * side))
 		end
@@ -308,7 +379,7 @@ local function buildSpawnPlaza(folder)
 	-- A little "how to play" plinth in the middle of the plaza.
 	local plinth = part(plaza, "Plinth", Vector3.new(20, 6, 12), CFrame.new(0, 7.4, 178),
 		Color3.fromRGB(148, 186, 224), Enum.Material.Marble)
-	billboard(plaza, plinth, Vector2.new(420, 130), Vector3.new(0, 6, 0), {
+	billboard(plaza, plinth, Vector2.new(440, 130), Vector3.new(0, 6, 0), {
 		{ text = "PRESS  E  TO HATCH / PLACE / STEAL", color = Color3.fromRGB(255, 255, 255), height = 46, font = Enum.Font.GothamBlack },
 		{ text = "Walk to an egg machine. Then carry it home.", color = Color3.fromRGB(180, 232, 255), height = 34, font = Enum.Font.GothamBold },
 	}, Color3.fromRGB(12, 26, 46), Color3.fromRGB(110, 220, 255))
@@ -332,7 +403,8 @@ local function buildEggMachine(parent, egg, position)
 	local eggBody = ball(model, "Egg", 13, CFrame.new(position + Vector3.new(0, 13.5, 0)), egg.color, Enum.Material.Neon)
 	eggBody.CanCollide = false
 	local shellRing = cylinder(model, "EggRing", Vector3.new(1.4, 15, 15),
-		CFrame.new(position + Vector3.new(0, 13.5, 0)) * CFrame.Angles(0, 0, math.rad(90)), egg.accent, Enum.Material.Neon)
+		CFrame.new(position + Vector3.new(0, 13.5, 0)) * CFrame.Angles(0, 0, math.rad(90)), egg.accent,
+		Enum.Material.Neon)
 	shellRing.CanCollide = false
 	shellRing.Transparency = 0.25
 
@@ -344,12 +416,19 @@ local function buildEggMachine(parent, egg, position)
 
 	model.PrimaryPart = plinth
 	model:SetAttribute("EggId", egg.id)
+	model:SetAttribute("EggPrice", egg.price)
 
-	billboard(model, eggBody, Vector2.new(380, 140), Vector3.new(0, 10, 0), {
+	billboard(model, plinth, Vector2.new(400, 168), Vector3.new(0, 22, 0), {
 		{ text = string.upper(egg.name), color = egg.accent, height = 46, font = Enum.Font.FredokaOne },
-		{ text = "$" .. egg.price, color = Color3.fromRGB(255, 236, 130), height = 44, font = Enum.Font.GothamBlack },
-		{ text = egg.blurb, color = Color3.fromRGB(206, 226, 246), height = 30, font = Enum.Font.Gotham },
+		{ text = "$" .. egg.price, color = Color3.fromRGB(255, 236, 130), height = 48, font = Enum.Font.GothamBlack },
+		{ text = egg.blurb, color = Color3.fromRGB(206, 226, 246), height = 32, font = Enum.Font.Gotham },
 	}, Color3.fromRGB(10, 18, 34), egg.color)
+
+	-- A second, low board facing the shop floor with the odds: the acquire frame
+	-- has to show what you are rolling for, not just the price.
+	billboard(model, plinth, Vector2.new(360, 74), Vector3.new(0, 10.5, 0), {
+		{ text = RarityConfig.oddsLine(egg.weights), color = egg.accent, height = 40, font = Enum.Font.GothamBold },
+	}, Color3.fromRGB(8, 14, 26), egg.color)
 
 	-- ProximityPrompt: the E key. Everything it triggers is validated server-side.
 	local prompt = Instance.new("ProximityPrompt")
@@ -378,14 +457,15 @@ local function buildKiosk(parent, name, title, subtitle, position, color)
 
 	local base = part(model, "Base", Vector3.new(12, 8, 12), CFrame.new(position + Vector3.new(0, 4, 0)),
 		Color3.fromRGB(40, 56, 84), Enum.Material.Metal)
-	part(model, "Trim", Vector3.new(13.5, 1, 13.5), CFrame.new(position + Vector3.new(0, 8, 0)), color, Enum.Material.Neon)
+	part(model, "Trim", Vector3.new(13.5, 1, 13.5), CFrame.new(position + Vector3.new(0, 8, 0)), color,
+		Enum.Material.Neon)
 	local roof = part(model, "Roof", Vector3.new(15, 1.4, 15), CFrame.new(position + Vector3.new(0, 12.6, 0)),
 		Color3.fromRGB(226, 240, 255), Enum.Material.Snow)
 	roof.CanCollide = false
 
 	model.PrimaryPart = base
-	billboard(model, base, Vector2.new(300, 120), Vector3.new(0, 11, 0), {
-		{ text = title, color = Color3.fromRGB(255, 255, 255), height = 44, font = Enum.Font.FredokaOne },
+	billboard(model, base, Vector2.new(300, 132), Vector3.new(0, 13, 0), {
+		{ text = title, color = Color3.fromRGB(255, 255, 255), height = 46, font = Enum.Font.FredokaOne },
 		{ text = subtitle, color = color, height = 38, font = Enum.Font.GothamBlack },
 	}, Color3.fromRGB(10, 18, 34), color)
 
@@ -408,12 +488,18 @@ local function buildConveyor(parent)
 	model.Name = "Conveyor"
 	model.Parent = parent
 
+	-- Its own apron. The belt now lives on the shop side of the island, so it
+	-- gets a floor of its own rather than relying on the shop slab reaching here.
+	local apron = part(model, "ConveyorApron", Vector3.new(104, 2, 132),
+		CFrame.new(center + Vector3.new(0, 3.2, 0)), Color3.fromRGB(236, 244, 255), Enum.Material.Ice)
+	apron.CanCollide = true
+
 	-- A rounded rectangle path: four straight runs joined by corner pads.
 	local runs = {
-		{ offset = Vector3.new(0, 0, -50), size = Vector3.new(70, 1.6, 8) },
-		{ offset = Vector3.new(0, 0, 50), size = Vector3.new(70, 1.6, 8) },
-		{ offset = Vector3.new(-35, 0, 0), size = Vector3.new(8, 1.6, 108) },
-		{ offset = Vector3.new(35, 0, 0), size = Vector3.new(8, 1.6, 108) },
+		{ offset = Vector3.new(0, 0, -34), size = Vector3.new(66, 1.6, 8) },
+		{ offset = Vector3.new(0, 0, 34), size = Vector3.new(66, 1.6, 8) },
+		{ offset = Vector3.new(-33, 0, 0), size = Vector3.new(8, 1.6, 76) },
+		{ offset = Vector3.new(33, 0, 0), size = Vector3.new(8, 1.6, 76) },
 	}
 
 	local waypoints = {}
@@ -437,29 +523,31 @@ local function buildConveyor(parent)
 	end
 
 	for _, corner in ipairs({
-		Vector3.new(-35, 0, -50), Vector3.new(35, 0, -50), Vector3.new(35, 0, 50), Vector3.new(-35, 0, 50),
+		Vector3.new(-33, 0, -34), Vector3.new(33, 0, -34), Vector3.new(33, 0, 34), Vector3.new(-33, 0, 34),
 	}) do
-		local pad = part(model, "CornerPad", Vector3.new(14, 1.6, 14), CFrame.new(center + corner + Vector3.new(0, 4, 0)),
+		part(model, "CornerPad", Vector3.new(14, 1.6, 14), CFrame.new(center + corner + Vector3.new(0, 4, 0)),
 			Color3.fromRGB(52, 62, 82), Enum.Material.DiamondPlate)
-		pad.CanCollide = true
 	end
 
 	-- The route a spawned character walks, in order, as world positions.
-	table.insert(waypoints, center + Vector3.new(-35, 5.4, -50))
-	table.insert(waypoints, center + Vector3.new(35, 5.4, -50))
-	table.insert(waypoints, center + Vector3.new(35, 5.4, 50))
-	table.insert(waypoints, center + Vector3.new(-35, 5.4, 50))
+	table.insert(waypoints, center + Vector3.new(-33, 5.4, -34))
+	table.insert(waypoints, center + Vector3.new(33, 5.4, -34))
+	table.insert(waypoints, center + Vector3.new(33, 5.4, 34))
+	table.insert(waypoints, center + Vector3.new(-33, 5.4, 34))
 
 	-- A big sign so the free-loot route is discoverable.
-	local signPost = part(model, "ConveyorSign", Vector3.new(28, 10, 1.6),
-		CFrame.new(center + Vector3.new(0, 20, -58)), Color3.fromRGB(16, 28, 48), Enum.Material.SmoothPlastic)
+	local signPost = part(model, "ConveyorSign", Vector3.new(30, 11, 1.6),
+		CFrame.new(center + Vector3.new(0, 20, -42)), Color3.fromRGB(16, 28, 48), Enum.Material.SmoothPlastic)
 	signPost.CanCollide = false
-	billboard(model, signPost, Vector2.new(420, 120), Vector3.new(0, 0, 0), {
+	surfaceText(signPost, Enum.NormalId.Front, "FREE BRAINROT CONVEYOR", Color3.fromRGB(120, 255, 190),
+		Color3.fromRGB(10, 18, 34), Color3.fromRGB(120, 255, 190))
+	billboard(model, signPost, Vector2.new(440, 120), Vector3.new(0, 8, 0), {
 		{ text = "FREE BRAINROT CONVEYOR", color = Color3.fromRGB(120, 255, 190), height = 44, font = Enum.Font.FredokaOne },
 		{ text = "Walk into one to grab it. Nobody is watching.", color = Color3.fromRGB(200, 232, 255), height = 32, font = Enum.Font.GothamBold },
 	}, Color3.fromRGB(10, 18, 34), Color3.fromRGB(120, 255, 190))
-	for _, x in ipairs({ -12, 12 }) do
-		part(model, "SignLeg", Vector3.new(1, 14, 1), CFrame.new(center + Vector3.new(x, 13, -58)),
+
+	for _, x in ipairs({ -13, 13 }) do
+		part(model, "SignLeg", Vector3.new(1, 14, 1), CFrame.new(center + Vector3.new(x, 13, -42)),
 			Color3.fromRGB(220, 226, 236), Enum.Material.Metal)
 	end
 
@@ -501,6 +589,9 @@ end
 
 -- ---------------------------------------------------------------- the dens
 
+-- One den: a snow disc, an igloo behind the pads, 16 sockets in a 4x4 grid, a
+-- name sign that carries real text on two surfaces, and a shield dome that stays
+-- invisible until the owner buys a Lock.
 local function buildBase(parent, index, position)
 	local model = Instance.new("Model")
 	model.Name = "Base_" .. index
@@ -508,7 +599,6 @@ local function buildBase(parent, index, position)
 
 	local platformSize = WorldBuilder.basePlatformSize
 
-	-- Igloo-styled round platform: a snow disc with an ice ring and a rim wall.
 	local disc = cylinder(model, "Platform", Vector3.new(3, platformSize, platformSize),
 		CFrame.new(position + Vector3.new(0, 3, 0)) * CFrame.Angles(0, 0, math.rad(90)),
 		Color3.fromRGB(248, 252, 255), Enum.Material.Snow)
@@ -518,14 +608,18 @@ local function buildBase(parent, index, position)
 		Color3.fromRGB(170, 220, 255), Enum.Material.Ice)
 	ring.CanCollide = false
 
-	-- The igloo itself, a half-buried dome behind the pads.
-	local dome = ball(model, "Igloo", 22, CFrame.new(position + Vector3.new(0, 3, 15)), Color3.fromRGB(246, 250, 255), Enum.Material.Snow)
+	-- The igloo sits BEHIND the pads (-Z), because every camera that matters for a
+	-- capture stands on the plaza side (+Z). When the igloo was at +Z its dome was
+	-- the biggest thing between the lens and the cast, and it hid the whole den.
+	local dome = ball(model, "Igloo", 30, CFrame.new(position + Vector3.new(0, 3, -44)),
+		Color3.fromRGB(246, 250, 255), Enum.Material.Snow)
 	dome.CanCollide = true
-	local door = part(model, "IglooDoor", Vector3.new(7, 8, 1), CFrame.new(position + Vector3.new(0, 7, 4.5)),
+	local door = part(model, "IglooDoor", Vector3.new(8, 9, 1), CFrame.new(position + Vector3.new(0, 7, -29)),
 		Color3.fromRGB(58, 78, 110), Enum.Material.SmoothPlastic)
 	door.CanCollide = false
 
-	-- 4x4 pad sockets.
+	-- 4x4 pad sockets, nudged toward +Z so the igloo has room behind them and the
+	-- camera gets a clean, unobstructed row of characters with their labels up.
 	local pads = {}
 	local grid = WorldBuilder.padGridSize
 	local spacing = WorldBuilder.padSpacing
@@ -534,7 +628,7 @@ local function buildBase(parent, index, position)
 		for column = 1, grid do
 			local padIndex = (row - 1) * grid + column
 			local localX = originOffset + (column - 1) * spacing
-			local localZ = originOffset + (row - 1) * spacing - 6
+			local localZ = originOffset + (row - 1) * spacing + 6
 			local padPosition = position + Vector3.new(localX, 4.9, localZ)
 
 			local socket = cylinder(model, "Pad_" .. padIndex, Vector3.new(0.8, 7, 7),
@@ -543,10 +637,9 @@ local function buildBase(parent, index, position)
 			socket.CanCollide = false
 			socket:SetAttribute("PadIndex", padIndex)
 
-			local glow = part(model, "PadGlow_" .. padIndex, Vector3.new(1, 6.2, 6.2), CFrame.new(padPosition + Vector3.new(0, 0.5, 0)),
+			local glow = cylinder(model, "PadGlow_" .. padIndex, Vector3.new(1, 6.2, 6.2),
+				CFrame.new(padPosition + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
 				Color3.fromRGB(120, 220, 255), Enum.Material.Neon)
-			glow.Shape = Enum.PartType.Cylinder
-			glow.CFrame = CFrame.new(padPosition + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
 			glow.CanCollide = false
 			glow.CanQuery = false
 			glow.Transparency = 0.55
@@ -555,24 +648,36 @@ local function buildBase(parent, index, position)
 		end
 	end
 
-	-- The den's name sign. PlotService rewrites the text when the base is claimed.
-	local signPost = part(model, "NameSign", Vector3.new(30, 9, 1.4),
-		CFrame.new(position + Vector3.new(0, 22, -20)), Color3.fromRGB(16, 28, 48), Enum.Material.SmoothPlastic)
-	signPost.CanCollide = false
-	local signBoard = billboard(model, signPost, Vector2.new(420, 110), Vector3.new(0, 0, 0), {
-		{ text = "UNCLAIMED DEN", color = Color3.fromRGB(255, 236, 130), height = 56, font = Enum.Font.FredokaOne },
-	}, Color3.fromRGB(10, 18, 34), Color3.fromRGB(255, 200, 90))
+	-- The sign stands BEHIND the den (-Z), tall enough to clear the igloo and the
+	-- cast, so the plaza approach reads it across the island and the cover camera
+	-- (which always stands on the +Z plaza side) looks THROUGH the pads at it
+	-- instead of being masked by it. Slab + billboard; PlotService repaints both.
+	local signSlab = part(model, "NameSign", Vector3.new(44, 13, 1.2),
+		CFrame.new(position + Vector3.new(0, 34, -62)), WorldBuilder.denSignBack, Enum.Material.SmoothPlastic)
+	signSlab.CanCollide = false
+	local signFace = surfaceText(signSlab, Enum.NormalId.Back, "UNCLAIMED DEN",
+		WorldBuilder.denSignColor, WorldBuilder.denSignBack, WorldBuilder.denSignColor)
+	local signBackFace = surfaceText(signSlab, Enum.NormalId.Front, "UNCLAIMED DEN",
+		WorldBuilder.denSignColor, WorldBuilder.denSignBack, WorldBuilder.denSignColor)
+
+	local signBoard = billboard(model, signSlab, Vector2.new(520, 140), Vector3.new(0, 8, 0), {
+		{ text = "UNCLAIMED DEN", color = WorldBuilder.denSignColor, height = 76, font = Enum.Font.FredokaOne },
+	}, WorldBuilder.denSignBack, WorldBuilder.denSignColor)
 	local signTitle = signBoard.Card:FindFirstChild("Line1")
-	for _, x in ipairs({ -12, 12 }) do
-		part(model, "SignLeg", Vector3.new(1.2, 20, 1.2), CFrame.new(position + Vector3.new(x, 12, -20)),
+
+	for _, x in ipairs({ -18, 18 }) do
+		part(model, "SignLeg", Vector3.new(1.4, 30, 1.4), CFrame.new(position + Vector3.new(x, 19, -62)),
 			Color3.fromRGB(220, 226, 236), Enum.Material.Metal)
 	end
 
-	-- The shield dome: invisible until the owner buys a Lock.
+	-- The shield dome: invisible until the owner buys a Lock. Even when raised it
+	-- stays faint, because a translucent sphere between the camera and the den is
+	-- exactly what ruined the first cover frame.
 	local shield = ball(model, "ShieldDome", platformSize + 12, CFrame.new(position + Vector3.new(0, 10, 0)),
 		Color3.fromRGB(120, 210, 255), Enum.Material.ForceField)
 	shield.CanCollide = false
 	shield.CanQuery = false
+	shield.CastShadow = false
 	shield.Transparency = 1
 
 	model.PrimaryPart = disc
@@ -584,6 +689,8 @@ local function buildBase(parent, index, position)
 		position = position,
 		pads = pads,
 		signTitle = signTitle,
+		signFace = signFace,
+		signBackFace = signBackFace,
 		shield = shield,
 		dome = dome,
 	}
@@ -615,7 +722,7 @@ local function buildFrozenLake(folder)
 		CFrame.new(center + Vector3.new(0, 4.2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
 		Color3.fromRGB(178, 226, 255), Enum.Material.Ice)
 	ice.CanCollide = true
-	ice.Reflectance = 0.28
+	ice.Reflectance = 0.22
 
 	-- Cracks: thin dark strips so the ice reads as ice, not a blue circle.
 	for index = 1, 7 do
@@ -647,7 +754,7 @@ local function buildFrozenLake(folder)
 	sculptureLight.Parent = plinth
 
 	billboard(lake, plinth, Vector2.new(400, 100), Vector3.new(0, 18, 0), {
-		{ text = "FROZEN LAKE", color = Color3.fromRGB(200, 240, 255), height = 44, font = Enum.Font.FredokaOne },
+		{ text = "FROZEN LAKE", color = Color3.fromRGB(200, 240, 255), height = 46, font = Enum.Font.FredokaOne },
 	}, Color3.fromRGB(12, 26, 46), Color3.fromRGB(150, 220, 255))
 
 	return lake
@@ -708,7 +815,8 @@ local function buildSnowman(parent, position)
 	model.Parent = parent
 	ball(model, "Bottom", 6, CFrame.new(position + Vector3.new(0, 7, 0)), Color3.fromRGB(252, 254, 255))
 	ball(model, "Middle", 4.6, CFrame.new(position + Vector3.new(0, 11.4, 0)), Color3.fromRGB(252, 254, 255))
-	local head = ball(model, "Head", 3.4, CFrame.new(position + Vector3.new(0, 14.8, 0)), Color3.fromRGB(252, 254, 255))
+	local head = ball(model, "Head", 3.4, CFrame.new(position + Vector3.new(0, 14.8, 0)),
+		Color3.fromRGB(252, 254, 255))
 	part(model, "Nose", Vector3.new(0.5, 0.5, 2), CFrame.new(position + Vector3.new(0, 14.9, -1.9)),
 		Color3.fromRGB(255, 140, 48), Enum.Material.SmoothPlastic)
 	part(model, "Hat", Vector3.new(2.6, 1.6, 2.6), CFrame.new(position + Vector3.new(0, 16.6, 0)),
@@ -746,19 +854,16 @@ local function buildPineTree(parent, position, height)
 	for tier = 1, 3 do
 		local tierHeight = height * (0.42 - tier * 0.08)
 		local radius = height * (0.34 - tier * 0.08)
-		local cone = part(model, "Tier" .. tier, Vector3.new(radius * 2, tierHeight, radius * 2),
-			CFrame.new(position + Vector3.new(0, height * 0.32 + tier * height * 0.2, 0)),
-			Color3.fromRGB(30, 92, 78), Enum.Material.Grass)
-		cone.Shape = Enum.PartType.Cylinder
-		cone.CFrame = CFrame.new(position + Vector3.new(0, height * 0.32 + tier * height * 0.2, 0))
+		local tierCframe = CFrame.new(position + Vector3.new(0, height * 0.32 + tier * height * 0.2, 0))
 			* CFrame.Angles(0, 0, math.rad(90))
-		-- snow cap on each tier
-		local cap = part(model, "SnowCap" .. tier, Vector3.new(radius * 1.7, 0.6, radius * 1.7),
-			CFrame.new(position + Vector3.new(0, height * 0.32 + tier * height * 0.2 + tierHeight * 0.45, 0)),
-			Color3.fromRGB(250, 253, 255), Enum.Material.Snow)
-		cap.Shape = Enum.PartType.Cylinder
-		cap.CFrame = CFrame.new(position + Vector3.new(0, height * 0.32 + tier * height * 0.2 + tierHeight * 0.45, 0))
+		local cone = cylinder(model, "Tier" .. tier, Vector3.new(radius * 2, tierHeight, radius * 2),
+			tierCframe, Color3.fromRGB(30, 92, 78), Enum.Material.Grass)
+		cone.CanCollide = false
+		local capCframe = CFrame.new(position
+				+ Vector3.new(0, height * 0.32 + tier * height * 0.2 + tierHeight * 0.45, 0))
 			* CFrame.Angles(0, 0, math.rad(90))
+		local cap = cylinder(model, "SnowCap" .. tier, Vector3.new(radius * 1.7, 0.6, radius * 1.7),
+			capCframe, Color3.fromRGB(250, 253, 255), Enum.Material.Snow)
 		cap.CanCollide = false
 	end
 	model.PrimaryPart = model:FindFirstChild("Trunk")
@@ -859,16 +964,19 @@ local function buildIceWall(folder)
 	local slab = part(wall, "Slab",
 		Vector3.new(WorldBuilder.iceWallWidth, WorldBuilder.iceWallHeight, 8),
 		CFrame.new(0, WorldBuilder.iceWallHeight / 2, WorldBuilder.iceWallStartZ),
-		Color3.fromRGB(140, 210, 255), Enum.Material.Ice)
-	slab.Transparency = 0.35
+		Color3.fromRGB(96, 178, 240), Enum.Material.Ice)
+	-- Opaque enough to read as a WALL in a capture: at 0.3 the slab all but
+	-- vanished and only its crest spheres showed, which looked like balloons.
+	slab.Transparency = 0.12
 	slab.CanCollide = false
 	slab.CanQuery = false
 
 	-- A crest along the top so the wall reads as a wave, not a billboard.
 	for index = -5, 5 do
-		local crest = ball(wall, "Crest", 34, CFrame.new(index * 40, WorldBuilder.iceWallHeight - 6, WorldBuilder.iceWallStartZ),
-			Color3.fromRGB(200, 238, 255), Enum.Material.Ice)
-		crest.Transparency = 0.35
+		local crest = ball(wall, "Crest", 30,
+			CFrame.new(index * 40, WorldBuilder.iceWallHeight - 4, WorldBuilder.iceWallStartZ),
+			Color3.fromRGB(168, 222, 255), Enum.Material.Ice)
+		crest.Transparency = 0.18
 		crest.CanCollide = false
 		crest.CanQuery = false
 	end
@@ -898,7 +1006,7 @@ end
 -- ---------------------------------------------------------------- public build
 
 -- Build (or rebuild) the whole island. Returns a table of live references.
-function WorldBuilder.build()
+function WorldBuilder.buildIsland()
 	local existing = workspace:FindFirstChild(WorldBuilder.worldFolderName)
 	if existing then
 		existing:Destroy()
@@ -943,6 +1051,9 @@ function WorldBuilder.build()
 	}
 end
 
+-- Alias kept because the boot script and the probes call it as `build`.
+WorldBuilder.build = WorldBuilder.buildIsland
+
 -- Where a pad's character stands, in world space.
 function WorldBuilder.padStandPosition(baseInfo, padIndex)
 	local pad = baseInfo.pads[padIndex]
@@ -955,6 +1066,32 @@ end
 -- The den's claim point: where the player is standing when they place.
 function WorldBuilder.baseCenter(baseInfo)
 	return baseInfo.position + Vector3.new(0, 6, 0)
+end
+
+-- Repaint a den sign on every surface it owns. Called on claim and on lock
+-- changes so the slab, the back face and the billboard never disagree.
+function WorldBuilder.setDenSign(baseInfo, text, color)
+	if not baseInfo then
+		return
+	end
+	if baseInfo.signFace then
+		baseInfo.signFace.Text = text
+		if color then
+			baseInfo.signFace.TextColor3 = color
+		end
+	end
+	if baseInfo.signBackFace then
+		baseInfo.signBackFace.Text = text
+		if color then
+			baseInfo.signBackFace.TextColor3 = color
+		end
+	end
+	if baseInfo.signTitle then
+		baseInfo.signTitle.Text = text
+		if color then
+			baseInfo.signTitle.TextColor3 = color
+		end
+	end
 end
 
 return WorldBuilder

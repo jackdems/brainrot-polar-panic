@@ -4,9 +4,7 @@
 	unlock the Galaxy Egg.
 ]]
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 local Shared = ReplicatedStorage:WaitForChild("PolarShared")
 
 local RebirthConfig = require(Shared.RebirthConfig)
@@ -27,27 +25,31 @@ end
 
 -- Everything placed is sacrificed; the multiplier is what you keep.
 local function clearDen(record)
-	local baseInfo = PlotService.baseFor(record)
+	-- Collect first: removePlaced mutates the table being iterated.
+	local indices = {}
 	for padIndex in pairs(record.pads) do
+		table.insert(indices, padIndex)
+	end
+	for _, padIndex in ipairs(indices) do
 		PlotService.removePlaced(record, padIndex)
 	end
 	record.pads = {}
 	record.carried = nil
-	if baseInfo then
-		PlotService.refreshPads(record)
-	end
+	PlotService.refreshPads(record)
 end
 
 function RebirthService.tryRebirth(player, record)
 	if not RebirthConfig.canRebirth(record.rebirths) then
-		NetworkGuard.notify(player, "Maximum rebirths reached — you are already a legend.", Color3.fromRGB(255, 210, 120))
+		NetworkGuard.notify(player, "Maximum rebirths reached — you are already a legend.",
+			Color3.fromRGB(255, 210, 120))
 		return
 	end
 
 	local cost = RebirthConfig.cost(record.rebirths)
 	if record.cash < cost then
-		NetworkGuard.notify(player, string.format("Rebirth %d needs $%d. You have $%d.",
-			record.rebirths + 1, cost, math.floor(record.cash)), Color3.fromRGB(255, 140, 120))
+		NetworkGuard.notify(player, string.format("Rebirth %d needs %s. You have %s.",
+			record.rebirths + 1, UpgradesConfig.moneyText(cost), UpgradesConfig.moneyText(record.cash)),
+			Color3.fromRGB(255, 140, 120))
 		return
 	end
 
@@ -66,8 +68,12 @@ function RebirthService.tryRebirth(player, record)
 	PlotService.refreshPads(record)
 
 	local multiplier = RebirthConfig.multiplier(record.rebirths)
-	NetworkGuard.banner("rebirth", string.format("%s REBIRTHED — x%d INCOME", player.Name, multiplier), Color3.fromRGB(255, 214, 92), 5)
-	NetworkGuard.effect("rebirth", { position = player.Character and player.Character:GetPivot().Position, rebirths = record.rebirths })
+	NetworkGuard.banner("rebirth", string.format("%s REBIRTHED — x%d INCOME", player.Name, multiplier),
+		Color3.fromRGB(255, 214, 92), 5)
+	NetworkGuard.effect("rebirth", {
+		position = player.Character and player.Character:GetPivot().Position,
+		rebirths = record.rebirths,
+	})
 	NetworkGuard.pushState(player)
 
 	print(string.format("[RebirthService] %s is now rebirth %d (x%d)", player.Name, record.rebirths, multiplier))

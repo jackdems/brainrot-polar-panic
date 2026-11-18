@@ -1,19 +1,15 @@
 --[[ ThiefService
 	One job: the yeti bandit. Every ~90 s (when at least one player has something
-	placed and no den is safe) a Yeti spawns at the map edge, runs to a den, grabs
-	one placed character and sprints for the exit. Press E on it to stun it 3 s and
-	make it drop the loot. A locked den turns it away.
+	placed and its den is not locked) a Yeti spawns at the map edge, runs to a den,
+	grabs one placed character and sprints for the exit. Press E on it to stun it
+	3 s and make it drop the loot. A locked den turns it away.
 ]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 
-local Shared = ReplicatedStorage:WaitForChild("PolarShared")
-
-local CastConfig = require(Shared.CastConfig)
-local RarityConfig = require(Shared.RarityConfig)
+local CastConfig = require(ReplicatedStorage:WaitForChild("PolarShared"):WaitForChild("CastConfig"))
 
 local ThiefService = {}
 
@@ -22,8 +18,8 @@ local ServerState, NetworkGuard, CharacterFactory, PlotService, WorldBuilder
 ThiefService.interval = 90
 ThiefService.runSpeed = 26
 ThiefService.stunSeconds = 3
-ThiefService.edgePosition = Vector3.new(220, 4, 230)
-ThiefService.stunReach = 22
+ThiefService.edgePosition = Vector3.new(200, 6, 210)
+ThiefService.stunReach = 24
 
 local timer = 0
 local thieves = {} -- list of live thief records
@@ -50,17 +46,17 @@ local function buildYeti()
 	model.Name = "YetiBandit"
 
 	local function piece(name, size, cframe, color, material)
-		local part = Instance.new("Part")
-		part.Name = name
-		part.Anchored = true
-		part.CanCollide = false
-		part.CanQuery = false
-		part.Size = size
-		part.CFrame = cframe
-		part.Color = color
-		part.Material = material or Enum.Material.Slate
-		part.Parent = model
-		return part
+		local piece = Instance.new("Part")
+		piece.Name = name
+		piece.Anchored = true
+		piece.CanCollide = false
+		piece.CanQuery = false
+		piece.Size = size
+		piece.CFrame = cframe
+		piece.Color = color
+		piece.Material = material or Enum.Material.Slate
+		piece.Parent = model
+		return piece
 	end
 
 	local fur = Color3.fromRGB(196, 220, 244)
@@ -73,11 +69,16 @@ local function buildYeti()
 	piece("ArmR", Vector3.new(1.8, 5.4, 1.8), CFrame.new(3.4, 6, 0) * CFrame.Angles(0, 0, math.rad(-14)), fur)
 	piece("LegL", Vector3.new(1.8, 3.2, 1.8), CFrame.new(-1.4, 2, 0), fur)
 	piece("LegR", Vector3.new(1.8, 3.2, 1.8), CFrame.new(1.4, 2, 0), fur)
-	piece("HornL", Vector3.new(0.6, 1.6, 0.6), CFrame.new(-1.1, 12, -0.6) * CFrame.Angles(math.rad(-14), 0, math.rad(16)), dark)
-	piece("HornR", Vector3.new(0.6, 1.6, 0.6), CFrame.new(1.1, 12, -0.6) * CFrame.Angles(math.rad(-14), 0, math.rad(-16)), dark)
-	piece("EyeL", Vector3.new(0.7, 0.7, 0.4), CFrame.new(-0.9, 10.4, -2.2), Color3.fromRGB(255, 96, 64), Enum.Material.Neon)
-	piece("EyeR", Vector3.new(0.7, 0.7, 0.4), CFrame.new(0.9, 10.4, -2.2), Color3.fromRGB(255, 96, 64), Enum.Material.Neon)
-	piece("LootCrate", Vector3.new(2.6, 2.2, 2.6), CFrame.new(0, 6, 2.6), Color3.fromRGB(148, 108, 62), Enum.Material.WoodPlanks)
+	piece("HornL", Vector3.new(0.6, 1.6, 0.6),
+		CFrame.new(-1.1, 12, -0.6) * CFrame.Angles(math.rad(-14), 0, math.rad(16)), dark)
+	piece("HornR", Vector3.new(0.6, 1.6, 0.6),
+		CFrame.new(1.1, 12, -0.6) * CFrame.Angles(math.rad(-14), 0, math.rad(-16)), dark)
+	piece("EyeL", Vector3.new(0.7, 0.7, 0.4), CFrame.new(-0.9, 10.4, -2.2), Color3.fromRGB(255, 96, 64),
+		Enum.Material.Neon)
+	piece("EyeR", Vector3.new(0.7, 0.7, 0.4), CFrame.new(0.9, 10.4, -2.2), Color3.fromRGB(255, 96, 64),
+		Enum.Material.Neon)
+	piece("LootCrate", Vector3.new(2.6, 2.2, 2.6), CFrame.new(0, 6, 2.6), Color3.fromRGB(148, 108, 62),
+		Enum.Material.WoodPlanks)
 
 	model.PrimaryPart = torso
 	model:SetAttribute("IsThief", true)
@@ -88,16 +89,19 @@ end
 local function buildThiefTag(model)
 	local board = Instance.new("BillboardGui")
 	board.Name = "ThiefTag"
-	board.Size = UDim2.fromOffset(320, 96)
-	board.StudsOffsetWorldSpace = Vector3.new(0, 14, 0)
-	board.AlwaysOnTop = true
+	board.Size = UDim2.fromOffset(360, 110)
+	board.StudsOffsetWorldSpace = Vector3.new(0, 15, 0)
+	-- Never AlwaysOnTop: Studio's screen_capture drops on-top billboards, and the
+	-- bandit's label has to survive a capture (see CharacterFactory).
+	board.AlwaysOnTop = false
 	board.LightInfluence = 0
+	board.MaxDistance = 320
 	board.Adornee = model.PrimaryPart
 
 	local card = Instance.new("Frame")
 	card.Size = UDim2.fromScale(1, 1)
 	card.BackgroundColor3 = Color3.fromRGB(38, 12, 16)
-	card.BackgroundTransparency = 0.1
+	card.BackgroundTransparency = 0.08
 	card.BorderSizePixel = 0
 	card.Parent = board
 
@@ -107,24 +111,26 @@ local function buildThiefTag(model)
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Color3.fromRGB(255, 92, 72)
-	stroke.Thickness = 4
+	stroke.Thickness = 5
 	stroke.Parent = card
 
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-	title.Size = UDim2.new(1, -12, 0, 44)
-	title.Position = UDim2.fromOffset(6, 6)
+	title.Size = UDim2.new(1, -14, 0, 50)
+	title.Position = UDim2.fromOffset(7, 6)
 	title.BackgroundTransparency = 1
 	title.Font = Enum.Font.FredokaOne
 	title.TextColor3 = Color3.fromRGB(255, 126, 108)
 	title.TextScaled = true
+	title.TextStrokeColor3 = Color3.fromRGB(20, 4, 6)
+	title.TextStrokeTransparency = 0.2
 	title.Text = "YETI BANDIT"
 	title.Parent = card
 
 	local hint = Instance.new("TextLabel")
 	hint.Name = "Hint"
-	hint.Size = UDim2.new(1, -12, 0, 34)
-	hint.Position = UDim2.fromOffset(6, 52)
+	hint.Size = UDim2.new(1, -14, 0, 40)
+	hint.Position = UDim2.fromOffset(7, 60)
 	hint.BackgroundTransparency = 1
 	hint.Font = Enum.Font.GothamBlack
 	hint.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -184,11 +190,11 @@ function ThiefService.spawnThief()
 		phase = "approach",
 		carrying = nil,
 		stunnedUntil = 0,
-		escapeAt = ThiefService.edgePosition,
 	}
 
 	thieves[#thieves + 1] = thief
-	NetworkGuard.banner("thief", "YETI BANDIT is raiding " .. target.player.Name .. "'s den!", Color3.fromRGB(255, 120, 96), 4)
+	NetworkGuard.banner("thief", "YETI BANDIT is raiding " .. target.player.Name .. "'s den!",
+		Color3.fromRGB(255, 120, 96), 4)
 	NetworkGuard.effect("thiefSpawn", { position = ThiefService.edgePosition })
 	print("[ThiefService] bandit out for " .. target.player.Name)
 	return thief
@@ -212,7 +218,6 @@ function ThiefService.stunThief(thief, seconds)
 			loot.Name = "Dropped_" .. payload.name
 			loot:PivotTo(CFrame.new(thief.model:GetPivot().Position + Vector3.new(0, 2, 0)))
 			loot.Parent = workspace
-			loot:SetAttribute("CharacterName", payload.name)
 			loot:SetAttribute("CharacterId", payload.characterId)
 			loot:SetAttribute("DroppedOwner", thief.targetPlayer.UserId)
 			loot:SetAttribute("Rarity", payload.rarity)
@@ -220,24 +225,25 @@ function ThiefService.stunThief(thief, seconds)
 		end
 
 		if thief.targetPlayer and thief.targetPlayer.Parent then
-			NetworkGuard.notify(thief.targetPlayer, "The bandit dropped " .. payload.name .. "! Grab it back.", Color3.fromRGB(126, 255, 176))
+			NetworkGuard.notify(thief.targetPlayer, "The bandit dropped " .. payload.name .. "! Grab it back.",
+				Color3.fromRGB(126, 255, 176))
 		end
 	end
 
-	-- Shake the model briefly so the stun reads on screen.
-	local primary = thief.model.PrimaryPart
-	if primary then
-		task.spawn(function()
-			local origin = primary.CFrame
-			for i = 1, 6 do
-				primary.CFrame = origin * CFrame.Angles(0, 0, math.rad(if i % 2 == 0 then 8 else -8))
-				task.wait(0.08)
+	-- Shake the whole model briefly so the stun reads on screen.
+	task.spawn(function()
+		local origin = thief.model:GetPivot()
+		for i = 1, 6 do
+			if not thief.model or not thief.model.Parent then
+				return
 			end
-			if primary and primary.Parent then
-				primary.CFrame = origin
-			end
-		end)
-	end
+			thief.model:PivotTo(origin * CFrame.Angles(0, 0, math.rad(if i % 2 == 0 then 7 else -7)))
+			task.wait(0.08)
+		end
+		if thief.model and thief.model.Parent then
+			thief.model:PivotTo(origin)
+		end
+	end)
 end
 
 -- ---------------------------------------------------------------- the loop
@@ -272,10 +278,13 @@ function ThiefService.step(deltaTime)
 		if thief.phase == "approach" then
 			local baseInfo = PlotService.baseFor(thief.targetRecord)
 			goal = baseInfo and (baseInfo.position + Vector3.new(0, 6, 0)) or ThiefService.edgePosition
-			if baseInfo and (position - goal).Magnitude < 12 then
+			if baseInfo and (position - goal).Magnitude < 14 then
 				-- Arrived: grab the goods if the den is still open.
 				if ServerState.isLocked(thief.targetRecord) then
-					NetworkGuard.notify(thief.targetPlayer, "Your Lock sent the bandit packing!", Color3.fromRGB(120, 220, 255))
+					if thief.targetPlayer and thief.targetPlayer.Parent then
+						NetworkGuard.notify(thief.targetPlayer, "Your Lock sent the bandit packing!",
+							Color3.fromRGB(120, 220, 255))
+					end
 					thief.phase = "flee"
 					thief.carrying = nil
 				else
@@ -284,20 +293,25 @@ function ThiefService.step(deltaTime)
 						PlotService.removePlaced(thief.targetRecord, thief.padIndex)
 						thief.carrying = pad
 						thief.phase = "flee"
-						NetworkGuard.notify(thief.targetPlayer, "The bandit grabbed " .. pad.name .. "! Press E on it to stun.", Color3.fromRGB(255, 126, 108))
+						if thief.targetPlayer and thief.targetPlayer.Parent then
+							NetworkGuard.notify(thief.targetPlayer,
+								"The bandit grabbed " .. pad.name .. "! Press E on it to stun.",
+								Color3.fromRGB(255, 126, 108))
+							NetworkGuard.pushState(thief.targetPlayer)
+						end
 						NetworkGuard.effect("thiefGrab", { position = position })
 					else
 						thief.phase = "flee"
 					end
-					NetworkGuard.pushState(thief.targetPlayer)
 				end
 			end
 		elseif thief.phase == "flee" then
 			goal = ThiefService.edgePosition
-			if (position - goal).Magnitude < 16 then
+			if (position - goal).Magnitude < 18 then
 				-- Escaped: the character is gone for good.
 				if thief.carrying and thief.targetPlayer and thief.targetPlayer.Parent then
-					NetworkGuard.notify(thief.targetPlayer, "The bandit escaped with " .. thief.carrying.name .. ".", Color3.fromRGB(255, 126, 108))
+					NetworkGuard.notify(thief.targetPlayer, "The bandit escaped with " .. thief.carrying.name .. ".",
+						Color3.fromRGB(255, 126, 108))
 					NetworkGuard.pushState(thief.targetPlayer)
 				end
 				model:Destroy()

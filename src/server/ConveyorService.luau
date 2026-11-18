@@ -7,13 +7,11 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("PolarShared")
 
 local EggConfig = require(Shared.EggConfig)
 local CastConfig = require(Shared.CastConfig)
-local MutationConfig = require(Shared.MutationConfig)
 
 local ConveyorService = {}
 
@@ -22,10 +20,10 @@ local ServerState, NetworkGuard, CharacterFactory
 ConveyorService.spawnInterval = 20
 ConveyorService.walkSpeed = 9
 ConveyorService.maxOnBelt = 3
+ConveyorService.grabRadius = 8
 
 local random = Random.new(os.clock() * 7919)
-local active = {} -- list of { model, index, statData }
-local lanes = {}
+local active = {} -- list of { model, waypoint, laps, name, rarity, mutation, characterId }
 local timer = 0
 
 function ConveyorService.init(context)
@@ -75,7 +73,6 @@ local function spawnOnBelt()
 	active[#active + 1] = {
 		model = model,
 		waypoint = 2,
-		progress = 0,
 		laps = 0,
 		name = entry.name,
 		rarity = entry.rarity,
@@ -126,8 +123,7 @@ function ConveyorService.step(deltaTime)
 			local direction = delta.Unit
 			local move = direction * ConveyorService.walkSpeed * deltaTime
 			local newPosition = position + move
-			local look = CFrame.lookAt(newPosition, newPosition + direction)
-			model:PivotTo(look)
+			model:PivotTo(CFrame.lookAt(newPosition, newPosition + direction))
 		end
 
 		-- Touch = pick up. Checked here so it works without physics on the models.
@@ -136,7 +132,7 @@ function ConveyorService.step(deltaTime)
 			if record and not record.carried then
 				local character = player.Character
 				local root = character and character:FindFirstChild("HumanoidRootPart")
-				if root and (root.Position - model:GetPivot().Position).Magnitude < 7 then
+				if root and (root.Position - model:GetPivot().Position).Magnitude < ConveyorService.grabRadius then
 					record.carried = {
 						characterId = item.characterId,
 						name = item.name,
@@ -146,7 +142,8 @@ function ConveyorService.step(deltaTime)
 					}
 					model:Destroy()
 					table.remove(active, index)
-					NetworkGuard.notify(player, item.name .. " snatched off the belt! Place it at your den.", Color3.fromRGB(126, 255, 176))
+					NetworkGuard.notify(player, item.name .. " snatched off the belt! Place it at your den.",
+						Color3.fromRGB(126, 255, 176))
 					NetworkGuard.effect("grab", { position = root.Position, rarity = item.rarity })
 					NetworkGuard.pushState(player)
 					break
@@ -160,10 +157,19 @@ function ConveyorService.count()
 	return #active
 end
 
--- Force a spawn (used by the verification probe and by the screenshots).
+-- Force a spawn (used by the verification probe and by the screenshot harness).
 function ConveyorService.forceSpawn()
 	spawnOnBelt()
 	return #active
+end
+
+-- What is on the belt right now, as plain data for a probe.
+function ConveyorService.listing()
+	local rows = {}
+	for _, item in ipairs(active) do
+		table.insert(rows, item.name .. "(" .. item.rarity .. ")")
+	end
+	return rows
 end
 
 return ConveyorService

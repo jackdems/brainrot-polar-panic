@@ -1,10 +1,8 @@
 --[[ PlotService
-	One job: dens. Claiming one on join, painting its pads, putting a character on
-	a pad, taking it back off, unlocking the next socket and raising the shield
-	dome while the owner has a Lock.
+	One job: dens. Claiming one on join, painting its pads and its sign, putting a
+	character on a pad, taking it back off, unlocking the next socket and raising
+	the shield dome while the owner has a Lock.
 ]]
-
-local Players = game:GetService("Players")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("PolarShared")
@@ -15,7 +13,7 @@ local RarityConfig = require(Shared.RarityConfig)
 
 local PlotService = {}
 
-local ServerState, NetworkGuard, CharacterFactory, WorldBuilder, remotes
+local ServerState, NetworkGuard, CharacterFactory, WorldBuilder
 
 -- baseIndex -> { record, padModels = { [padIndex] = Model }, baseInfo }
 PlotService.claimed = {}
@@ -25,7 +23,6 @@ function PlotService.init(context)
 	NetworkGuard = context.guard or require(script.Parent.NetworkGuard)
 	CharacterFactory = context.characterFactory
 	WorldBuilder = context.worldBuilder
-	remotes = context.remotes
 
 	PlotService.world = context.world
 
@@ -43,7 +40,7 @@ end
 -- Give this player a den and paint its sign. Called once per join.
 function PlotService.claimBase(player, record)
 	if not record or record.baseIndex then
-		return
+		return nil
 	end
 
 	local index = (ServerState.baseCounter % #PlotService.world.bases) + 1
@@ -53,11 +50,9 @@ function PlotService.claimBase(player, record)
 	local baseInfo = PlotService.world.bases[index]
 	PlotService.claimed[index] = { record = record, padModels = {}, baseInfo = baseInfo }
 
-	local title = baseInfo.signTitle
-	if title then
-		title.Text = player.Name .. "'s DEN"
-		title.TextColor3 = Color3.fromRGB(255, 236, 130)
-	end
+	-- The sign is the den's identity: it says whose den it is on the slab face,
+	-- the back face and the floating billboard, all three in the same breath.
+	WorldBuilder.setDenSign(baseInfo, player.Name .. "'s Den", RarityConfig.rarities.Legendary.glow)
 
 	-- Fresh den: no shield, every socket dark.
 	PlotService.refreshPads(record)
@@ -72,6 +67,30 @@ function PlotService.baseFor(record)
 	return PlotService.world.bases[record.baseIndex]
 end
 
+-- Release a den when its owner leaves, so the sign does not keep a dead name.
+function PlotService.releaseBase(record)
+	if not record or not record.baseIndex then
+		return
+	end
+	local claim = PlotService.claimed[record.baseIndex]
+	local baseInfo = claim and claim.baseInfo or PlotService.baseFor(record)
+	if claim then
+		for padIndex, model in pairs(claim.padModels) do
+			if model then
+				model:Destroy()
+			end
+			claim.padModels[padIndex] = nil
+		end
+		PlotService.claimed[record.baseIndex] = nil
+	end
+	if baseInfo then
+		WorldBuilder.setDenSign(baseInfo, "UNCLAIMED DEN", WorldBuilder.denSignColor)
+		if baseInfo.shield then
+			baseInfo.shield.Transparency = 1
+		end
+	end
+end
+
 -- ---------------------------------------------------------------- pad paint
 
 -- Light up unlocked sockets, dim the locked ones, and price the next unlock.
@@ -82,16 +101,16 @@ function PlotService.refreshPads(record)
 	end
 
 	local unlocked = ServerState.unlockedPadCount(record)
-	local claim = PlotService.claimed[record.baseIndex]
 	local lockedColor = Color3.fromRGB(96, 110, 132)
 	local openColor = Color3.fromRGB(120, 220, 255)
+	local filledColor = Color3.fromRGB(126, 255, 176)
 
 	for padIndex, pad in pairs(baseInfo.pads) do
 		local occupied = record.pads[padIndex] ~= nil
 		local isOpen = padIndex <= unlocked
 		local glowColor
 		if occupied then
-			glowColor = Color3.fromRGB(126, 255, 176)
+			glowColor = filledColor
 		elseif isOpen then
 			glowColor = openColor
 		else
@@ -104,18 +123,25 @@ function PlotService.refreshPads(record)
 		if pad.part then
 			pad.part.Color = if isOpen then Color3.fromRGB(226, 242, 255) else Color3.fromRGB(150, 166, 190)
 		end
-		if claim and claim.padModels[padIndex] then
-			-- A placed character belongs to this pad; leave it alone.
-		end
 	end
 end
 
 -- ---------------------------------------------------------------- placement
 
+-- Where a placed character's feet go, given its pad.
+local function standOn(baseInfo, padIndex)
+	local pad = baseInfo.pads[padIndex]
+	if not pad then
+		return baseInfo.position + Vector3.new(0, 6, 0)
+	end
+	return pad.position + Vector3.new(0, 3.4, 0)
+end
+
 -- Put a carried character onto the first free unlocked pad.
 function PlotService.tryPlaceCharacter(player, record)
 	if not record.carried then
-		NetworkGuard.notify(player, "You are not carrying anything. Hatch an egg or grab one off the conveyor.", Color3.fromRGB(255, 210, 120))
+		NetworkGuard.notify(player, "You are not carrying anything. Hatch an egg or grab one off the conveyor.",
+			Color3.fromRGB(255, 210, 120))
 		return
 	end
 
@@ -156,12 +182,13 @@ function PlotService.tryPlaceCharacter(player, record)
 		if claim.padModels[padIndex] then
 			claim.padModels[padIndex]:Destroy()
 		end
-		-- Build, park it on its socket, and only then start the idle bob: the bob
+		-- Build, park it on the socket, and only then start the idle bob: the bob
 		-- records the pivot it starts from, so the model must already be placed.
-		local model = CharacterFactory.build(entry, { mutation = carried.mutation, bob = false })
+		local model = CharacterFactory.build(entry,
+			{ mutation = carried.mutation, bob = false, scale = 1.2, padIndex = padIndex })
 		model.Name = "Placed_" .. entry.name
-		model:PivotTo(CFrame.new(pad.position + Vector3.new(0, 3.4, 0)))
-		model.Parent = (baseInfo and baseInfo.model) or workspace
+		model:PivotTo(CFrame.new(standOn(baseInfo, padIndex)))
+		model.Parent = baseInfo.model
 		model:SetAttribute("PlacedBy", player.UserId)
 		model:SetAttribute("OnPad", padIndex)
 		claim.padModels[padIndex] = model
@@ -171,14 +198,15 @@ function PlotService.tryPlaceCharacter(player, record)
 	record.carried = nil
 	PlotService.refreshPads(record)
 
-	NetworkGuard.notify(player, string.format("%s placed on pad %d — %s/s",
-		carried.name, padIndex, tostring(math.floor(ServerState.padIncome(record.pads[padIndex]) * ServerState.rebirthMultiplier(record)))), Color3.fromRGB(126, 255, 176))
+	local income = math.floor(ServerState.padIncome(record.pads[padIndex]) * ServerState.rebirthMultiplier(record))
+	NetworkGuard.notify(player, string.format("%s placed on pad %d — $%d/s", carried.name, padIndex, income),
+		Color3.fromRGB(126, 255, 176))
 	NetworkGuard.effect("place", { position = pad.position, rarity = carried.rarity })
 	NetworkGuard.pushState(player)
 end
 
 -- Take one of your own characters back off its pad. `wantedPad` is optional; with
--- no index (or one that is empty) the last placed character comes off.
+-- no index (or one that is empty) the highest placed character comes off.
 function PlotService.tryPickupCharacter(player, record, wantedPad)
 	local baseInfo = PlotService.baseFor(record)
 	if not baseInfo or not NetworkGuard.inReach(player, baseInfo.position, 52) then
@@ -214,6 +242,7 @@ function PlotService.tryPickupCharacter(player, record, wantedPad)
 		name = pad.name,
 		rarity = pad.rarity,
 		mutation = pad.mutation,
+		source = "den",
 	}
 	record.pads[chosen] = nil
 
@@ -244,27 +273,30 @@ function PlotService.tryUnlockPad(player, record)
 
 	local price = UpgradesConfig.padPrice(ServerState.unlockedPadCount(record) + 1)
 	if not ServerState.trySpend(record, price) then
-		NetworkGuard.notify(player, string.format("Need $%d for the next pad.", price), Color3.fromRGB(255, 140, 120))
+		NetworkGuard.notify(player, string.format("Need %s for the next pad.", UpgradesConfig.moneyText(price)),
+			Color3.fromRGB(255, 140, 120))
 		return
 	end
 
 	ServerState.unlockNextPad(record)
 	PlotService.refreshPads(record)
-	NetworkGuard.notify(player, string.format("Pad %d unlocked!", ServerState.unlockedPadCount(record)), Color3.fromRGB(126, 255, 176))
+	NetworkGuard.notify(player, string.format("Pad %d unlocked!", ServerState.unlockedPadCount(record)),
+		Color3.fromRGB(126, 255, 176))
 	NetworkGuard.effect("unlock", { position = baseInfo.position })
 	NetworkGuard.pushState(player)
 end
 
 -- ---------------------------------------------------------------- drops
 
--- Drop a carried character on the ground as a frozen piece of loot anyone can
--- grab. Used by the wall, by a steal, and by a thieving player.
+-- Drop a carried character on the ground as frozen loot anyone can grab. Used by
+-- the wall, by a steal, and by a player pressing Q.
 function PlotService.dropCarried(player, record, reason)
 	if not record or not record.carried then
 		return nil
 	end
 	local root = NetworkGuard.rootOf(player)
-	local dropPosition = root and (root.Position + root.CFrame.LookVector * 3) or WorldBuilder.spawnPosition
+	local dropPosition = root and (root.Position + root.CFrame.LookVector * 3)
+		or Vector3.new(0, 6, WorldBuilder.spawnPosition.Z)
 	dropPosition = Vector3.new(dropPosition.X, 4, dropPosition.Z)
 
 	local carried = record.carried
@@ -316,19 +348,19 @@ function PlotService.tryGrabDropped(player, record, characterId)
 	end
 
 	for _, model in ipairs(workspace:GetChildren()) do
-		if model:IsA("Model") and model.Name:sub(1, 8) == "Dropped_" then
+		if model:IsA("Model") and string.sub(model.Name, 1, 8) == "Dropped_" then
 			if model:GetAttribute("CharacterId") == wanted then
 				if (model:GetPivot().Position - root.Position).Magnitude > 26 then
 					NetworkGuard.notify(player, "Too far away.", Color3.fromRGB(255, 160, 120))
 					return
 				end
-				local entry = CastConfig.get(model:GetAttribute("CharacterName") or model.Name:gsub("^Dropped_", ""))
-				local name = model.Name:gsub("^Dropped_", "")
+				local name = string.gsub(model.Name, "^Dropped_", "")
 				record.carried = {
 					characterId = wanted,
 					name = name,
-					rarity = model:GetAttribute("Rarity") or (entry and entry.rarity) or "Common",
+					rarity = model:GetAttribute("Rarity") or "Common",
 					mutation = model:GetAttribute("Mutation") or "None",
+					source = "grabbed",
 				}
 				model:Destroy()
 				NetworkGuard.notify(player, name .. " grabbed!", Color3.fromRGB(126, 255, 176))
@@ -337,6 +369,8 @@ function PlotService.tryGrabDropped(player, record, characterId)
 			end
 		end
 	end
+
+	NetworkGuard.notify(player, "That one is gone.", Color3.fromRGB(255, 210, 120))
 end
 
 -- A placed character was stolen: remove it from the owner's den and its model.
@@ -365,6 +399,27 @@ function PlotService.padIndexFor(record, characterId)
 		end
 	end
 	return nil
+end
+
+-- The model standing on one pad, or nil.
+function PlotService.modelOnPad(record, padIndex)
+	local claim = record and PlotService.claimed[record.baseIndex]
+	return claim and claim.padModels[padIndex] or nil
+end
+
+-- Count what is actually standing on a den: the verification probes read this.
+function PlotService.placedModelCount(record)
+	local claim = record and PlotService.claimed[record.baseIndex]
+	if not claim then
+		return 0
+	end
+	local count = 0
+	for _, model in pairs(claim.padModels) do
+		if model and model.Parent then
+			count += 1
+		end
+	end
+	return count
 end
 
 return PlotService
