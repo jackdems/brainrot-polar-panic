@@ -1,38 +1,50 @@
 {
-  "name": "house-dodge",
+  "name": "brainrot-polar-panic",
   "tree": {
     "$className": "DataModel",
-    "Players": {
-      "$properties": {
-        "CharacterAutoLoads": false
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "PolarShared": {
+        "$path": "src/shared"
       }
     },
     "ServerScriptService": {
+      "$className": "ServerScriptService",
       "Server": {
         "$path": "src/server"
       }
     },
     "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$properties": {
+        "CharacterWalkSpeed": 16,
+        "EnableMouseLockOption": false
+      },
       "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
         "Client": {
           "$path": "src/client"
         }
       }
     },
     "Workspace": {
+      "$className": "Workspace",
       "$properties": {
-        "FilteringEnabled": true
+        "FilteringEnabled": true,
+        "Gravity": 196.2
       },
       "Baseplate": {
         "$className": "Part",
         "$properties": {
           "Anchored": true,
+          "CanCollide": true,
           "Color": [
-            0.38823,
-            0.37254,
-            0.38823
+            0.92549,
+            0.94902,
+            0.98039
           ],
           "Locked": true,
+          "Material": "Snow",
           "Position": [
             0,
             -10,
@@ -47,19 +59,24 @@
       }
     },
     "Lighting": {
+      "$className": "Lighting",
       "$properties": {
         "Ambient": [
-          0,
-          0,
-          0
+          0.47059,
+          0.54902,
+          0.66667
         ],
-        "Brightness": 2,
+        "Brightness": 2.6,
+        "ClockTime": 14,
         "GlobalShadows": true,
         "Outlines": false,
-        "Technology": "Voxel"
+        "Technology": "Future",
+        "EnvironmentDiffuseScale": 0.4,
+        "EnvironmentSpecularScale": 0.5
       }
     },
     "SoundService": {
+      "$className": "SoundService",
       "$properties": {
         "RespectFilteringEnabled": true
       }
