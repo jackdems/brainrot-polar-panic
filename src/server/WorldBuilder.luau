@@ -492,23 +492,24 @@ local function buildEggMachine(parent, egg, position)
 	model.Name = "EggMachine_" .. egg.id
 	model.Parent = parent
 
-	local plinth = part(model, "Plinth", Vector3.new(16, 6, 16), CFrame.new(position + Vector3.new(0, 3, 0)),
+	local plinth = part(model, "Plinth", Vector3.new(12, 4, 12), CFrame.new(position + Vector3.new(0, 2, 0)),
 		Color3.fromRGB(38, 52, 78), Enum.Material.Metal)
-	part(model, "PlinthTrim", Vector3.new(17.5, 1, 17.5), CFrame.new(position + Vector3.new(0, 6, 0)),
+	part(model, "PlinthTrim", Vector3.new(13.5, 0.8, 13.5), CFrame.new(position + Vector3.new(0, 4, 0)),
 		egg.color, Enum.Material.Neon)
 
 	-- The egg: a ball with a ring around it, tinted to the machine's rarity colour.
-	local eggBody = ball(model, "Egg", 13, CFrame.new(position + Vector3.new(0, 13.5, 0)), egg.color, Enum.Material.Neon)
+	-- PLAYER-SCALE: egg ~5-6 studs, machine ~10 studs tall total
+	local eggBody = ball(model, "Egg", 5.5, CFrame.new(position + Vector3.new(0, 7.5, 0)), egg.color, Enum.Material.Neon)
 	eggBody.CanCollide = false
-	local shellRing = cylinder(model, "EggRing", Vector3.new(1.4, 15, 15),
-		CFrame.new(position + Vector3.new(0, 13.5, 0)) * CFrame.Angles(0, 0, math.rad(90)), egg.accent,
+	local shellRing = cylinder(model, "EggRing", Vector3.new(0.8, 7, 7),
+		CFrame.new(position + Vector3.new(0, 7.5, 0)) * CFrame.Angles(0, 0, math.rad(90)), egg.accent,
 		Enum.Material.Neon)
 	shellRing.CanCollide = false
 	shellRing.Transparency = 0.25
 
 	local glow = Instance.new("PointLight")
 	glow.Color = egg.color
-	glow.Range = 26
+	glow.Range = 18
 	glow.Brightness = 2.4
 	glow.Parent = eggBody
 
@@ -516,16 +517,16 @@ local function buildEggMachine(parent, egg, position)
 	model:SetAttribute("EggId", egg.id)
 	model:SetAttribute("EggPrice", egg.price)
 
-	billboard(model, plinth, Vector2.new(400, 168), Vector3.new(0, 22, 0), {
-		{ text = string.upper(egg.name), color = egg.accent, height = 46, font = Enum.Font.FredokaOne },
-		{ text = "$" .. egg.price, color = Color3.fromRGB(255, 236, 130), height = 48, font = Enum.Font.GothamBlack },
-		{ text = egg.blurb, color = Color3.fromRGB(206, 226, 246), height = 32, font = Enum.Font.Gotham },
+	billboard(model, plinth, Vector2.new(360, 140), Vector3.new(0, 14, 0), {
+		{ text = string.upper(egg.name), color = egg.accent, height = 40, font = Enum.Font.FredokaOne },
+		{ text = "$" .. egg.price, color = Color3.fromRGB(255, 236, 130), height = 42, font = Enum.Font.GothamBlack },
+		{ text = egg.blurb, color = Color3.fromRGB(206, 226, 246), height = 28, font = Enum.Font.Gotham },
 	}, Color3.fromRGB(10, 18, 34), egg.color)
 
 	-- A second, low board facing the shop floor with the odds: the acquire frame
 	-- has to show what you are rolling for, not just the price.
-	billboard(model, plinth, Vector2.new(360, 74), Vector3.new(0, 10.5, 0), {
-		{ text = RarityConfig.oddsLine(egg.weights), color = egg.accent, height = 40, font = Enum.Font.GothamBold },
+	billboard(model, plinth, Vector2.new(320, 60), Vector3.new(0, 7, 0), {
+		{ text = RarityConfig.oddsLine(egg.weights), color = egg.accent, height = 34, font = Enum.Font.GothamBold },
 	}, Color3.fromRGB(8, 14, 26), egg.color)
 
 	-- ProximityPrompt: the E key. Everything it triggers is validated server-side.
@@ -534,7 +535,7 @@ local function buildEggMachine(parent, egg, position)
 	prompt.ActionText = "Hatch"
 	prompt.ObjectText = egg.name .. "  $" .. egg.price
 	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 18
+	prompt.MaxActivationDistance = 14
 	prompt.RequiresLineOfSight = false
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.Parent = plinth
@@ -1134,6 +1135,18 @@ function WorldBuilder.buildIsland()
 	buildMountains(folder)
 	buildDecorations(folder)
 	local iceWall = buildIceWall(folder)
+
+	-- WorldDetail: the beauty pass (carpet spine, lanterns, crystals, drifts, signs, snowfall, aurora, trim)
+	local WorldDetail = require(script.Parent.WorldDetail)
+	local layout = {
+		plazaCenter = WorldBuilder.plazaCenter,
+		shopCenter = WorldBuilder.shopCenter,
+		lakeCenter = WorldBuilder.lakeCenter,
+		conveyorCenter = WorldBuilder.conveyorCenter,
+		bases = bases.bases,
+		deckY = WorldBuilder.deckY,
+	}
+	WorldDetail.decorate(folder, layout)
 
 	return {
 		folder = folder,

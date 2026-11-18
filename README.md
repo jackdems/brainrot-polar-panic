@@ -1,21 +1,27 @@
-# roblox-brainrot-01 starter
+# Brainrot Polar Panic!
 
-A working entry for make.fun's "Make the best AI Roblox brainrot game" bounty (roblox-brainrot-01), laid out as your
-repository: a Rojo project whose game is a grey square that moves with the arrow keys. It is a starting point, not a
-winner, and not yet the 3D game the bounty asks for: its square is drawn on the screen, not in Roblox's 3D world.
+A bright arctic island where players collect absurd original "brainrot" characters that each earn money per second, place them on pads at their base, and climb a rarity ladder with mutations, eggs, rebirths — while an Ice Wall sweeps the island every few minutes and thief NPCs (and other players) try to steal the placed characters.
 
-- `main.ts` (Node 22, standard library only) hands the game in: it copies `game.rbxl`, `src/`, `screenshots/` and
-  `PLAY.json` to `/output`, leaving out every name that starts with a dot (such as `.gitkeep` or `.DS_Store`, which
-  fail an entry), and writes `/output/dossier.json` with `vendor/makefun-roblox.ts`, the kit's copy, unchanged.
-- `game.rbxl` is the place Rojo builds from `src/` and `default.project.json`; `screenshots/` holds three captures of
-  it; `PLAY.json` names no place yet, so the gate refuses the starter as it stands until it names your published one.
-- One of your screenshots must also be your game's first thumbnail on Roblox: the same picture, uploaded on the
-  Creator Dashboard with your game's icon.
-- `TOUR.json` is an example of the optional tour: for each screenshot, the keys that bring the game to that screen.
+## Run locally
 
-Run it as the grader does, writing `out/` in place of `/output`:
+```bash
+# Requires Rojo 7.7.1 (included at tools/rojo/rojo.exe)
+cd repo
+E:/MAKEFUNPROJECT/Brainrot-Game/tools/rojo/rojo.exe build default.project.json --output game.rbxl
+```
 
-    mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+Open `game.rbxl` in Roblox Studio and playtest.
 
-The rules are on the bounty's page (/bounty/roblox-brainrot-01) and in the kit's RULES.txt,
-which gives every command in order (Before you submit, then Enter).
+## Badges
+
+[![make.fun](https://img.shields.io/badge/make.fun-brainrot--polar--panic-7C3AED?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTEyIDJjLTUuNTIzIDAtMTAgNC40NzctMTAgMTBzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMCAyMGMtNi42MjcgMC0xMi01LjM3My0xMi0xMlM1LjM3MyAyIDEyIDIgczEyIDUuMzczIDEyIDEyLTUuMzczIDEyLTEyIDEyeiIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0xMiA0Yy00LjQxMSAwLTggMy41ODktOCA4czMuNTg5IDggOCA4IDgtMy41ODkgOC04LTMuNTg5LTgtOC04em0wIDE0Yy0zLjMxNCAwLTYtMi42ODYtNi02czIuNjg2LTYgNi02IDYgMi42ODYgNiA2LTIuNjg2IDYtNiA2eiIvPjwvc3ZnPg==)](https://make.fun/games/jackdems/brainrot-polar-panic)
+[![make.fun](https://img.shields.io/badge/make.fun-play%20now-FF6B35?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTEyIDJjLTUuNTIzIDAtMTAgNC40NzctMTAgMTBzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMCAyMGMtNi42MjcgMC0xMi01LjM3My0xMi0xMlM1LjM3MyAyIDEyIDIgczEyIDUuMzczIDEyIDEyLTUuMzczIDEyLTEyIDEyeiIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0xMiA0Yy00LjQxMSAwLTggMy41ODktOCA4czMuNTg5IDggOCA4IDgtMy41ODkgOC04LTMuNTg5LTgtOC04em0wIDE0Yy0zLjMxNCAwLTYtMi42ODYtNi02czIuNjg2LTYgNi02IDYgMi42ODYgNiA2LTIuNjg2IDYtNiA2eiIvPjwvc3ZnPg==)](https://make.fun/games/jackdems/brainrot-polar-panic)
+[![make.fun](https://img.shields.io/badge/make.fun-source-00D4AA?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTEyIDJjLTUuNTIzIDAtMTAgNC40NzctMTAgMTBzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMCAyMGMtNi42MjcgMC0xMi01LjM3My0xMi0xMlM1LjM3MyAyIDEyIDIgczEyIDUuMzczIDEyIDEyLTUuMzczIDEyLTEyIDEyeiIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0xMiA0Yy00LjQxMSAwLTggMy41ODktOCA4czMuNTg5IDggOCA4IDgtMy41ODkgOC04LTMuNTg5LTgtOC04em0wIDE0Yy0zLjMxNCAwLTYtMi42ODYtNi02czIuNjg2LTYgNi02IDYgMi42ODYgNiA2LTIuNjg2IDYtNiA2eiIvPjwvc3ZnPg==)](https://github.com/jackdems/brainrot-polar-panic)
+
+## Referral
+
+Earn rewards by sharing: https://make.fun/r/zq9hvqnm
+
+---
+
+Built by an AI agent for make.fun's "Make the best AI Roblox brainrot game" bounty.

@@ -29,6 +29,7 @@ local ThiefService = require(script.ThiefService)
 local IceWallService = require(script.IceWallService)
 local RebirthService = require(script.RebirthService)
 local EventService = require(script.EventService)
+local NpcService = require(script.NpcService)
 
 -- ---------------------------------------------------------------- remotes
 
@@ -107,6 +108,15 @@ ThiefService.init(context)
 IceWallService.init(context)
 RebirthService.init(context)
 EventService.init(context)
+
+-- ---------------------------------------------------------------- ambient NPCs
+NpcService.init(world.folder, {
+	plazaCenter = WorldBuilder.plazaCenter,
+	shopCenter = WorldBuilder.shopCenter,
+	conveyorCenter = WorldBuilder.conveyorCenter,
+	lakeCenter = WorldBuilder.lakeCenter,
+	deckY = WorldBuilder.deckY,
+})
 
 -- ---------------------------------------------------------------- players
 

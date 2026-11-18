@@ -1,11 +1,10 @@
 --[[ Hud
-	One job: the money readout. A big animated cash counter, the $/s rate, the
-	rebirth multiplier, the lock badge, the carried strip and the hotbar buttons.
-	Nothing here decides anything — it renders what the server pushed.
+	One job: the money readout. A compact pill in the BOTTOM-LEFT corner (cash + $/s + pads line),
+	a vertical rail of SMALL square buttons down the LEFT edge (Shop, Rebirth, My Den),
+	and a slim centered carrying banner near the top. All together <15% HUD coverage.
 
-	Layout rule learned from the captures: the cash card lives top-LEFT under the
-	Roblox menu strip and is deliberately large (72 px digits), because the cover
-	thumbnail is scaled down and this number is what sells "you are getting rich".
+	Layout rule (from Steal a Brainrot reference): the world dominates every frame;
+	HUD elements are frost-blue panels with white text and rarity accents.
 ]]
 
 local Players = game:GetService("Players")
@@ -26,9 +25,20 @@ end
 local function stroke(parent, color, thickness)
 	local outline = Instance.new("UIStroke")
 	outline.Color = color
-	outline.Thickness = thickness or 3
+	outline.Thickness = thickness or 2
 	outline.Parent = parent
 	return outline
+end
+
+local function gradient(parent, topColor, bottomColor)
+	local grad = Instance.new("UIGradient")
+	grad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, topColor),
+		ColorSequenceKeypoint.new(1, bottomColor),
+	})
+	grad.Rotation = 90
+	grad.Parent = parent
+	return grad
 end
 
 local function label(parent, name, size, position, textSize, color)
@@ -48,150 +58,150 @@ end
 function Hud.new(gui)
 	local self = {}
 
-	-- ------------------------------------------------------------ cash card
-	-- Big, top-left, clear of the Roblox menu buttons.
-	local card = Instance.new("Frame")
-	card.Name = "CashCard"
-	card.AnchorPoint = Vector2.new(0, 0)
-	card.Position = UDim2.new(0, 22, 0, 94)
-	card.Size = UDim2.fromOffset(430, 164)
-	card.BackgroundColor3 = Color3.fromRGB(6, 14, 26)
-	card.BackgroundTransparency = 0.1
-	card.BorderSizePixel = 0
-	card.Parent = gui
-	corner(card, 18)
-	stroke(card, Color3.fromRGB(126, 255, 176), 4)
+	-- ------------------------------------------------------------ CASH PILL (bottom-left)
+	local cashPill = Instance.new("Frame")
+	cashPill.Name = "CashPill"
+	cashPill.AnchorPoint = Vector2.new(0, 1)
+	cashPill.Position = UDim2.new(0, 14, 1, -14)
+	cashPill.Size = UDim2.fromOffset(260, 72)
+	cashPill.BackgroundColor3 = Color3.fromRGB(10, 18, 34)
+	cashPill.BackgroundTransparency = 0.08
+	cashPill.BorderSizePixel = 0
+	cashPill.Parent = gui
+	corner(cashPill, 14)
+	stroke(cashPill, Color3.fromRGB(126, 255, 176), 2)
+	gradient(cashPill, Color3.fromRGB(18, 30, 52), Color3.fromRGB(8, 16, 32))
 
-	local cashLabel = label(card, "Cash", UDim2.new(1, -26, 0, 74), UDim2.fromOffset(16, 8), 66,
+	local cashLabel = label(cashPill, "Cash", UDim2.new(1, -20, 0, 38), UDim2.fromOffset(12, 2), 30,
 		Color3.fromRGB(126, 255, 176))
-	cashLabel.Font = Enum.Font.FredokaOne
 	cashLabel.TextXAlignment = Enum.TextXAlignment.Left
 	cashLabel.TextStrokeColor3 = Color3.fromRGB(4, 20, 10)
 	cashLabel.TextStrokeTransparency = 0.4
 	cashLabel.Text = "$100"
 
-	local rateLabel = label(card, "Rate", UDim2.new(0.62, -18, 0, 40), UDim2.fromOffset(18, 88), 30,
+	local rateLabel = label(cashPill, "Rate", UDim2.new(0.55, -12, 0, 22), UDim2.fromOffset(12, 38), 16,
 		Color3.fromRGB(255, 236, 130))
-	rateLabel.Font = Enum.Font.GothamBlack
 	rateLabel.TextXAlignment = Enum.TextXAlignment.Left
-	rateLabel.Text = "$0 /s"
+	rateLabel.Text = "$0/s"
 
-	local multiplierLabel = label(card, "Multiplier", UDim2.new(0.38, -14, 0, 40), UDim2.new(0.62, 6, 0, 88), 26,
-		Color3.fromRGB(255, 176, 240))
-	multiplierLabel.Font = Enum.Font.GothamBlack
-	multiplierLabel.Text = "x1"
+	local padsLabel = label(cashPill, "Pads", UDim2.new(0.45, -12, 0, 22), UDim2.new(0.55, 6, 0, 38), 16,
+		Color3.fromRGB(150, 180, 210))
+	padsLabel.TextXAlignment = Enum.TextXAlignment.Right
+	padsLabel.Text = "6/16 · 0 PLACED"
 
-	local lockLabel = label(card, "Lock", UDim2.new(1, -26, 0, 30), UDim2.fromOffset(18, 130), 22,
-		Color3.fromRGB(120, 220, 255))
-	lockLabel.Font = Enum.Font.GothamBlack
-	lockLabel.TextXAlignment = Enum.TextXAlignment.Left
-	lockLabel.Text = ""
+	-- ------------------------------------------------------------ LEFT BUTTON RAIL
+	local buttonRail = Instance.new("Frame")
+	buttonRail.Name = "ButtonRail"
+	buttonRail.AnchorPoint = Vector2.new(0, 0.5)
+	buttonRail.Position = UDim2.new(0, 14, 0.5, -80)
+	buttonRail.Size = UDim2.fromOffset(56, 280)
+	buttonRail.BackgroundTransparency = 1
+	buttonRail.Parent = gui
 
-	-- ------------------------------------------------------------ carried strip
-	local carriedCard = Instance.new("Frame")
-	carriedCard.Name = "CarriedCard"
-	carriedCard.AnchorPoint = Vector2.new(0.5, 0)
-	carriedCard.Position = UDim2.new(0.5, 0, 0, 88)
-	carriedCard.Size = UDim2.fromOffset(580, 70)
-	carriedCard.BackgroundColor3 = Color3.fromRGB(40, 26, 8)
-	carriedCard.BackgroundTransparency = 0.12
-	carriedCard.BorderSizePixel = 0
-	carriedCard.Visible = false
-	carriedCard.Parent = gui
-	corner(carriedCard, 14)
-	stroke(carriedCard, Color3.fromRGB(255, 196, 46), 4)
-
-	local carriedLabel = label(carriedCard, "Carried", UDim2.new(1, -20, 1, -8), UDim2.fromOffset(10, 4), 32,
-		Color3.fromRGB(255, 236, 168))
-	carriedLabel.Font = Enum.Font.GothamBlack
-	carriedLabel.Text = "CARRYING"
-
-	-- ------------------------------------------------------------ context hint
-	local hint = Instance.new("TextLabel")
-	hint.Name = "ContextHint"
-	hint.AnchorPoint = Vector2.new(0.5, 1)
-	hint.Position = UDim2.new(0.5, 0, 1, -138)
-	hint.Size = UDim2.fromOffset(820, 50)
-	hint.BackgroundColor3 = Color3.fromRGB(6, 14, 26)
-	hint.BackgroundTransparency = 0.15
-	hint.BorderSizePixel = 0
-	hint.Font = Enum.Font.GothamBlack
-	hint.TextSize = 28
-	hint.TextColor3 = Color3.fromRGB(255, 255, 255)
-	hint.Text = ""
-	hint.Parent = gui
-	corner(hint, 12)
-	stroke(hint, Color3.fromRGB(90, 140, 200), 2)
-
-	-- ------------------------------------------------------------ hotbar
-	local hotbar = Instance.new("Frame")
-	hotbar.Name = "Hotbar"
-	hotbar.AnchorPoint = Vector2.new(0.5, 1)
-	hotbar.Position = UDim2.new(0.5, 0, 1, -24)
-	hotbar.Size = UDim2.fromOffset(700, 96)
-	hotbar.BackgroundTransparency = 1
-	hotbar.Parent = gui
-
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.Padding = UDim.new(0, 12)
-	layout.Parent = hotbar
+	local railLayout = Instance.new("UIListLayout")
+	railLayout.FillDirection = Enum.FillDirection.Vertical
+	railLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	railLayout.Padding = UDim.new(0, 10)
+	railLayout.Parent = buttonRail
 
 	self.buttons = {}
 
-	local function addButton(name, text, keyHint, color, onClick)
+	local function addButton(name, text, iconColor, onClick)
 		local button = Instance.new("TextButton")
 		button.Name = name
-		button.Size = UDim2.fromOffset(214, 88)
-		button.BackgroundColor3 = color
+		button.Size = UDim2.fromOffset(56, 56)
+		button.BackgroundColor3 = Color3.fromRGB(14, 24, 44)
+		button.BackgroundTransparency = 0.08
 		button.BorderSizePixel = 0
 		button.Font = Enum.Font.FredokaOne
-		button.TextSize = 24
-		button.TextColor3 = Color3.fromRGB(10, 14, 26)
-		button.Text = text .. "\n[" .. keyHint .. "]"
-		button.AutoButtonColor = true
-		button.Parent = hotbar
-		corner(button, 16)
-		stroke(button, Color3.fromRGB(255, 255, 255), 3)
+		button.TextSize = 18
+		button.TextColor3 = Color3.fromRGB(255, 255, 255)
+		button.Text = text
+		button.AutoButtonColor = false
+		button.Parent = buttonRail
+		corner(button, 12)
+		stroke(button, iconColor, 2)
+
+		local grad = Instance.new("UIGradient")
+		grad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 36, 60)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 18, 36)),
+		})
+		grad.Rotation = 90
+		grad.Parent = button
+
+		button.MouseEnter:Connect(function()
+			TweenService:Create(button, TweenInfo.new(0.15), { BackgroundTransparency = 0, Size = UDim2.fromOffset(62, 62) }):Play()
+		end)
+		button.MouseLeave:Connect(function()
+			TweenService:Create(button, TweenInfo.new(0.15), { BackgroundTransparency = 0.08, Size = UDim2.fromOffset(56, 56) }):Play()
+		end)
 		button.MouseButton1Click:Connect(onClick)
+
 		self.buttons[name] = button
 		return button
 	end
 
-	addButton("ShopButton", "EGG SHOP", "1", Color3.fromRGB(126, 232, 255), function()
-		if self.onShop then
-			self.onShop()
-		end
+	addButton("ShopButton", "EGGS", Color3.fromRGB(126, 232, 255), function()
+		if self.onShop then self.onShop() end
 	end)
-	addButton("DenButton", "MY DEN", "2", Color3.fromRGB(126, 255, 176), function()
-		if self.onDen then
-			self.onDen()
-		end
+	addButton("RebirthButton", "REBIRTH", Color3.fromRGB(255, 196, 46), function()
+		if self.onRebirth then self.onRebirth() end
 	end)
-	addButton("RebirthButton", "REBIRTH", "3", Color3.fromRGB(255, 196, 46), function()
-		if self.onRebirth then
-			self.onRebirth()
-		end
+	addButton("DenButton", "DEN", Color3.fromRGB(126, 255, 176), function()
+		if self.onDen then self.onDen() end
 	end)
 
+	-- ------------------------------------------------------------ CARRIED BANNER (slim, centered, near top)
+	local carriedCard = Instance.new("Frame")
+	carriedCard.Name = "CarriedCard"
+	carriedCard.AnchorPoint = Vector2.new(0.5, 0)
+	carriedCard.Position = UDim2.new(0.5, 0, 0, 90)
+	carriedCard.Size = UDim2.fromOffset(520, 48)
+	carriedCard.BackgroundColor3 = Color3.fromRGB(40, 26, 8)
+	carriedCard.BackgroundTransparency = 0.1
+	carriedCard.BorderSizePixel = 0
+	carriedCard.Visible = false
+	carriedCard.Parent = gui
+	corner(carriedCard, 12)
+	stroke(carriedCard, Color3.fromRGB(255, 196, 46), 2)
+	gradient(carriedCard, Color3.fromRGB(60, 40, 16), Color3.fromRGB(30, 20, 10))
+
+	local carriedLabel = label(carriedCard, "Carried", UDim2.new(1, -20, 1, -8), UDim2.fromOffset(10, 4), 22,
+		Color3.fromRGB(255, 236, 168))
+	carriedLabel.Font = Enum.Font.GothamBlack
+	carriedLabel.TextXAlignment = Enum.TextXAlignment.Center
+	carriedLabel.Text = "CARRYING"
+
+	-- ------------------------------------------------------------ CONTEXT HINT (bottom center, slim)
+	local hint = Instance.new("TextLabel")
+	hint.Name = "ContextHint"
+	hint.AnchorPoint = Vector2.new(0.5, 1)
+	hint.Position = UDim2.new(0.5, 0, 1, -90)
+	hint.Size = UDim2.fromOffset(600, 40)
+	hint.BackgroundColor3 = Color3.fromRGB(8, 16, 32)
+	hint.BackgroundTransparency = 0.12
+	hint.BorderSizePixel = 0
+	hint.Font = Enum.Font.GothamBlack
+	hint.TextSize = 20
+	hint.TextColor3 = Color3.fromRGB(255, 255, 255)
+	hint.Text = ""
+	hint.Parent = gui
+	corner(hint, 10)
+	stroke(hint, Color3.fromRGB(90, 140, 200), 2)
+
+	-- ------------------------------------------------------------ RENDER
 	self.cash = 100
 	self.shownCash = 100
 
-	-- Roll the displayed number toward the real one every frame, so a tick reads
-	-- as a counter spinning rather than a number being replaced.
 	function self.rollTowards(target)
 		self.rollTarget = target
 		self.rollStart = self.shownCash
 		self.rollAt = os.clock()
 	end
 
-	-- ------------------------------------------------------------ render
-
 	function self.setSnapshot(snapshot)
-		if not snapshot then
-			return
-		end
+		if not snapshot then return end
 
 		local targetCash = snapshot.cash or 0
 		self.cash = targetCash
@@ -199,23 +209,15 @@ function Hud.new(gui)
 
 		local perSecond = snapshot.income or 0
 		if (snapshot.eventMultiplier or 1) > 1 then
-			rateLabel.Text = string.format("%s /s  x%d EVENT", self.formatNumber(perSecond), snapshot.eventMultiplier)
+			rateLabel.Text = string.format("%s/s  x%d EVENT", self.formatNumber(perSecond), snapshot.eventMultiplier)
 			rateLabel.TextColor3 = Color3.fromRGB(255, 214, 92)
 		else
-			rateLabel.Text = string.format("%s /s", self.formatNumber(perSecond))
+			rateLabel.Text = string.format("%s/s", self.formatNumber(perSecond))
 			rateLabel.TextColor3 = Color3.fromRGB(255, 236, 130)
 		end
 
-		multiplierLabel.Text = "x" .. (snapshot.multiplier or 1)
-
-		if snapshot.locked then
-			lockLabel.Text = string.format("DEN LOCKED  %d s", snapshot.lockSecondsLeft or 0)
-			lockLabel.TextColor3 = Color3.fromRGB(120, 220, 255)
-		else
-			lockLabel.Text = string.format("%d/%d PADS  ·  %d PLACED",
-				snapshot.unlockedPads or 6, snapshot.maxPads or 16, snapshot.placedCount or 0)
-			lockLabel.TextColor3 = Color3.fromRGB(150, 180, 210)
-		end
+		padsLabel.Text = string.format("%d/%d PADS  ·  %d PLACED",
+			snapshot.unlockedPads or 6, snapshot.maxPads or 16, snapshot.placedCount or 0)
 
 		if snapshot.carried then
 			carriedCard.Visible = true
@@ -251,7 +253,6 @@ function Hud.new(gui)
 		return tostring(number)
 	end
 
-	-- Cash text rides a RenderStepped so the counter rolls, not jumps.
 	RunService.RenderStepped:Connect(function()
 		if self.rollTarget then
 			local elapsed = math.min(1, (os.clock() - (self.rollAt or 0)) / 0.28)
