@@ -63,6 +63,25 @@ WorldBuilder.basePlatformSize = 80
 WorldBuilder.denSignColor = Color3.fromRGB(255, 226, 120)
 WorldBuilder.denSignBack = Color3.fromRGB(12, 22, 40)
 
+-- Every walkable surface on the island is poured at about this height (plaza 4.4,
+-- shop 4.2, den platform 4.5). WorldDetail rides its carpet, lanterns, crystals
+-- and drifts on this deck so nothing floats and nothing z-fights the slab below.
+WorldBuilder.deckY = 4.5
+
+-- The one palette for the island: frost-blue surfaces, deep navy frames, warm
+-- lantern light, and three neon accents (cyan / mint / violet). WorldDetail has
+-- its own copy of this table so it can be read alone.
+WorldBuilder.palette = {
+	frost = Color3.fromRGB(236, 246, 255),
+	ice = Color3.fromRGB(190, 228, 255),
+	deepIce = Color3.fromRGB(126, 190, 236),
+	navy = Color3.fromRGB(18, 30, 52),
+	cyan = Color3.fromRGB(120, 224, 255),
+	mint = Color3.fromRGB(126, 255, 176),
+	violet = Color3.fromRGB(178, 132, 255),
+	amber = Color3.fromRGB(255, 214, 120),
+}
+
 -- ---------------------------------------------------------------- primitives
 
 local function part(parent, name, size, cframe, color, material, extra)
@@ -185,6 +204,19 @@ end
 
 -- A SurfaceGui with one centred label, painted onto a slab's face. Returns the
 -- label so the owner of the slab can rewrite it later (the den sign does).
+--
+-- THE BLACK SLAB FIX. A SurfaceGui that renders as a flat black panel is the
+-- single most common way a sign dies in a Roblox capture, and it has three
+-- causes, all of which are pinned down here:
+--   * AlwaysOnTop = true -> Studio's screen_capture drops the surface entirely.
+--     It must be false.
+--   * Brightness = 0 (the default) -> the surface is lit only by the studio
+--     light, and a sign on a shadowed face renders near-black. It must be 1, so
+--     the panel carries its own light.
+--   * LightInfluence = 1 -> the GUI is tinted by scene light, which on a navy
+--     slab in cold fill goes to black. It must be 0.
+-- The backing frame is opaque, the stroke is Neon-coloured, and the text is white
+-- with a dark outline, so the panel reads as a lit sign against sunlit snow.
 local function surfaceText(slab, face, text, textColor, backColor, strokeColor)
 	local surface = Instance.new("SurfaceGui")
 	surface.Name = "SignSurface"
@@ -192,6 +224,7 @@ local function surfaceText(slab, face, text, textColor, backColor, strokeColor)
 	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	surface.PixelsPerStud = 34
 	surface.LightInfluence = 0
+	surface.Brightness = 1
 	surface.AlwaysOnTop = false
 	surface.Parent = slab
 
@@ -199,14 +232,25 @@ local function surfaceText(slab, face, text, textColor, backColor, strokeColor)
 	back.Name = "Back"
 	back.Size = UDim2.fromScale(1, 1)
 	back.BackgroundColor3 = backColor or WorldBuilder.denSignBack
-	back.BackgroundTransparency = 0.04
+	back.BackgroundTransparency = 0
 	back.BorderSizePixel = 0
 	back.Parent = surface
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = strokeColor or WorldBuilder.denSignColor
-	stroke.Thickness = 5
+	stroke.Thickness = 8
 	stroke.Parent = back
+
+	-- A slow vertical gradient so the panel has a lit top edge instead of a flat
+	-- fill: the same top-light every HUD panel and billboard card carries.
+	local topLight = Instance.new("UIGradient")
+	topLight.Rotation = 90
+	topLight.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(0.55, Color3.fromRGB(196, 208, 224)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 138, 160)),
+	})
+	topLight.Parent = back
 
 	local label = Instance.new("TextLabel")
 	label.Name = "SignText"
@@ -216,7 +260,7 @@ local function surfaceText(slab, face, text, textColor, backColor, strokeColor)
 	label.Font = Enum.Font.FredokaOne
 	label.TextColor3 = textColor or WorldBuilder.denSignColor
 	label.TextStrokeColor3 = Color3.fromRGB(8, 14, 26)
-	label.TextStrokeTransparency = 0.3
+	label.TextStrokeTransparency = 0.1
 	label.TextScaled = true
 	label.TextWrapped = true
 	label.Text = text
@@ -264,24 +308,76 @@ local function buildGround(folder)
 	return island
 end
 
--- Clear cold daylight: bright enough that colours read, with zero atmospheric
--- wash so the frame stays sharp when the capture is scaled down. Brightness is
--- deliberately capped: a 2.9 sun on white snow blew the highlights out and the
--- first capture pass came back as a milky rectangle with invisible characters.
+-- The lighting recipe: a LOW warm sun at 16.5 against a cool blue fill, an arctic
+-- atmosphere for depth, and three post effects that make neon and snow read.
+--
+-- The warm-vs-cool split is the whole trick. 16.5 puts the sun low behind long
+-- shadows; ColorShift_Top warms the key light while OutdoorAmbient cools the fill,
+-- and that contrast is what makes a flat Part island read as three dimensional in
+-- a still frame. Ambient stays LOW (35,40,55) on purpose: a high ambient raises
+-- the floor of every pixel and the contrast dies. Noon (14, the old setting) killed
+-- every shadow and the frame went soft and grey.
 local function buildLighting()
-	Lighting.ClockTime = 14
-	Lighting.Brightness = 2.1
-	Lighting.ExposureCompensation = -0.25
-	Lighting.Ambient = Color3.fromRGB(104, 122, 152)
-	Lighting.OutdoorAmbient = Color3.fromRGB(128, 150, 184)
-	Lighting.ColorShift_Top = Color3.fromRGB(186, 214, 250)
-	Lighting.ColorShift_Bottom = Color3.fromRGB(108, 138, 178)
+	Lighting.ClockTime = 16.5
+	Lighting.GeographicLatitude = 78
+	Lighting.Brightness = 2.2
+	Lighting.ExposureCompensation = -0.15
+	Lighting.Ambient = Color3.fromRGB(35, 40, 55)
+	Lighting.OutdoorAmbient = Color3.fromRGB(134, 158, 190)
+	Lighting.ColorShift_Top = Color3.fromRGB(255, 220, 190)
+	Lighting.ColorShift_Bottom = Color3.fromRGB(96, 130, 176)
+	Lighting.ShadowSoftness = 0.15
 	Lighting.GlobalShadows = true
-	Lighting.EnvironmentDiffuseScale = 0.2
-	Lighting.EnvironmentSpecularScale = 0.3
+	Lighting.EnvironmentDiffuseScale = 0.5
+	Lighting.EnvironmentSpecularScale = 0.35
+	-- Atmosphere owns the haze now, so the legacy fog stays out of the way
+	-- entirely rather than stacking a second white wash on top of it.
 	Lighting.FogEnd = 100000
 	Lighting.FogStart = 100000
 	Lighting.FogColor = Color3.fromRGB(226, 240, 255)
+
+	-- Atmosphere: depth on the horizon, and it hides the map edge behind the
+	-- mountains. Kept at a density that leaves a name tag legible past 100 studs;
+	-- a thicker one washed the whole capture milky in the first pass.
+	local atmosphere = Lighting:FindFirstChild("PolarAtmosphere")
+	if not atmosphere then
+		local existingAtmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+		if existingAtmosphere then
+			existingAtmosphere:Destroy()
+		end
+		atmosphere = Instance.new("Atmosphere")
+		atmosphere.Name = "PolarAtmosphere"
+		atmosphere.Parent = Lighting
+	end
+	atmosphere.Density = 0.32
+	atmosphere.Offset = 0.18
+	atmosphere.Color = Color3.fromRGB(196, 222, 240)
+	atmosphere.Decay = Color3.fromRGB(96, 130, 176)
+	atmosphere.Glare = 0.3
+	atmosphere.Haze = 0.6
+
+	-- The sky: a gradient arctic skybox with the celestial bodies shown, so the
+	-- low sun has something to set against and the wide shots get a real horizon.
+	local sky = Lighting:FindFirstChild("PolarSky")
+	if not sky then
+		local existingSky = Lighting:FindFirstChildOfClass("Sky")
+		if existingSky then
+			existingSky:Destroy()
+		end
+		sky = Instance.new("Sky")
+		sky.Name = "PolarSky"
+		sky.SkyboxBk = "rbxasset://sky/sky512_bk.tex"
+		sky.SkyboxDn = "rbxasset://sky/sky512_dn.tex"
+		sky.SkyboxFt = "rbxasset://sky/sky512_ft.tex"
+		sky.SkyboxLf = "rbxasset://sky/sky512_lf.tex"
+		sky.SkyboxRt = "rbxasset://sky/sky512_rt.tex"
+		sky.SkyboxUp = "rbxasset://sky/sky512_up.tex"
+		sky.Parent = Lighting
+	end
+	sky.CelestialBodiesShown = true
+	sky.SunAngularSize = 14
+	sky.MoonAngularSize = 10
+	sky.StarCount = 3000
 
 	local bloom = Lighting:FindFirstChild("PolarBloom")
 	if not bloom then
@@ -289,9 +385,9 @@ local function buildLighting()
 		bloom.Name = "PolarBloom"
 		bloom.Parent = Lighting
 	end
-	bloom.Intensity = 0.28
-	bloom.Size = 26
-	bloom.Threshold = 1.32
+	bloom.Intensity = 0.35
+	bloom.Size = 24
+	bloom.Threshold = 1.6
 
 	local grade = Lighting:FindFirstChild("PolarGrade")
 	if not grade then
@@ -299,16 +395,18 @@ local function buildLighting()
 		grade.Name = "PolarGrade"
 		grade.Parent = Lighting
 	end
-	grade.Brightness = -0.02
-	grade.Contrast = 0.2
-	grade.Saturation = 0.18
+	grade.Brightness = -0.01
+	grade.Contrast = 0.06
+	grade.Saturation = 0.12
 
-	-- No Atmosphere. See the header: haze is what turned the first round of
-	-- captures into a milky white rectangle.
-	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-	if atmosphere then
-		atmosphere:Destroy()
+	local rays = Lighting:FindFirstChild("PolarSunRays")
+	if not rays then
+		rays = Instance.new("SunRaysEffect")
+		rays.Name = "PolarSunRays"
+		rays.Parent = Lighting
 	end
+	rays.Intensity = 0.03
+	rays.Spread = 0.7
 end
 
 -- ---------------------------------------------------------------- the plaza

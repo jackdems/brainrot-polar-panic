@@ -318,9 +318,11 @@ local function buildNameTag(model, entry, mutationName, padIndex)
 	-- perfectly visible while playing came out missing from every capture. False
 	-- makes the draw order ordinary, which is what the capture pipeline honours.
 	board.Size = UDim2.fromOffset(220, cardHeight)
-	-- A per-pad vertical stagger: odd pads hang their card higher than even pads,
-	-- so two neighbouring characters never put their cards on the same scanline.
-	local stagger = if (padIndex or 1) % 2 == 0 then 3.4 else 0
+	-- A per-ROW staircase: the 4x4 pad grid means eight characters can sit on two
+	-- screen scanlines, so each grid row hangs its card a few studs higher than
+	-- the row in front. Without it, a full den is a wall of overlapping cards.
+	local row = math.floor(((padIndex or 1) - 1) / 4)
+	local stagger = row * 5.2
 	board.StudsOffsetWorldSpace = Vector3.new(0, (model:GetAttribute("Height") or 4.4) + 2.4 + stagger, 0)
 	board.AlwaysOnTop = false
 	board.LightInfluence = 0
