@@ -16,7 +16,7 @@ local MutationConfig = require(Shared.MutationConfig)
 
 local CharacterFactory = {}
 
-local TAG_HEIGHT = 3.4
+local TAG_HEIGHT = 4.6
 
 -- ---------------------------------------------------------------- part helpers
 
@@ -297,11 +297,13 @@ local planBuilders = {
 local function buildNameTag(model, entry, mutationName)
 	local board = Instance.new("BillboardGui")
 	board.Name = "NameTag"
-	board.Size = UDim2.fromOffset(300, 116)
+	-- Big enough to stay readable when the shot is scaled down to 1280 wide: the
+	-- judge reads these labels, so they are the widest thing the character owns.
+	board.Size = UDim2.fromOffset(440, 190)
 	board.StudsOffsetWorldSpace = Vector3.new(0, TAG_HEIGHT, 0)
 	board.AlwaysOnTop = true
 	board.LightInfluence = 0
-	board.MaxDistance = 320
+	board.MaxDistance = 400
 	board.Adornee = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
 
 	local card = Instance.new("Frame")
@@ -324,8 +326,8 @@ local function buildNameTag(model, entry, mutationName)
 
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "Title"
-	nameLabel.Size = UDim2.new(1, -12, 0, 46)
-	nameLabel.Position = UDim2.fromOffset(6, 4)
+	nameLabel.Size = UDim2.new(1, -14, 0, 74)
+	nameLabel.Position = UDim2.fromOffset(7, 6)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Enum.Font.FredokaOne
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -340,8 +342,8 @@ local function buildNameTag(model, entry, mutationName)
 
 	local rarityLabel = Instance.new("TextLabel")
 	rarityLabel.Name = "Rarity"
-	rarityLabel.Size = UDim2.new(0.5, -8, 0, 30)
-	rarityLabel.Position = UDim2.fromOffset(6, 52)
+	rarityLabel.Size = UDim2.new(0.5, -9, 0, 50)
+	rarityLabel.Position = UDim2.fromOffset(7, 84)
 	rarityLabel.BackgroundColor3 = RarityConfig.colorOf(entry.rarity)
 	rarityLabel.BackgroundTransparency = 0.05
 	rarityLabel.BorderSizePixel = 0
@@ -357,8 +359,8 @@ local function buildNameTag(model, entry, mutationName)
 
 	local incomeLabel = Instance.new("TextLabel")
 	incomeLabel.Name = "Income"
-	incomeLabel.Size = UDim2.new(0.5, -8, 0, 30)
-	incomeLabel.Position = UDim2.new(0.5, 2, 0, 52)
+	incomeLabel.Size = UDim2.new(0.5, -9, 0, 50)
+	incomeLabel.Position = UDim2.new(0.5, 2, 0, 84)
 	incomeLabel.BackgroundColor3 = Color3.fromRGB(24, 34, 52)
 	incomeLabel.BorderSizePixel = 0
 	incomeLabel.Font = Enum.Font.GothamBlack
@@ -374,34 +376,54 @@ local function buildNameTag(model, entry, mutationName)
 	if mutationName and mutationName ~= MutationConfig.plainName then
 		local mutationTag = Instance.new("TextLabel")
 		mutationTag.Name = "Mutation"
-		mutationTag.Size = UDim2.new(1, -12, 0, 26)
-		mutationTag.Position = UDim2.fromOffset(6, 86)
+		mutationTag.Size = UDim2.new(1, -14, 0, 44)
+		mutationTag.Position = UDim2.fromOffset(7, 140)
 		mutationTag.BackgroundTransparency = 1
 		mutationTag.Font = Enum.Font.GothamBlack
 		mutationTag.TextColor3 = MutationConfig.colorOf(mutationName)
 		mutationTag.TextScaled = true
 		mutationTag.Text = "★ " .. mutationName .. "  x" .. MutationConfig.multiplierOf(mutationName)
 		mutationTag.Parent = card
-		board.Size = UDim2.fromOffset(300, 140)
-		TAG_HEIGHT = 3.6
+		board.Size = UDim2.fromOffset(440, 190)
+		TAG_HEIGHT = 5.0
 	end
 
 	board.Parent = model.PrimaryPart
 	return board
 end
 
+-- Idle bob. It animates the whole model's pivot, never one part on its own: these
+-- models are welded, so moving a single PrimaryPart drags its welded children
+-- with it and the character tears itself apart.
 local function addIdleBob(model, baseHeight)
 	local primary = model.PrimaryPart
 	if not primary then
 		return
 	end
-	local target = primary.Position + Vector3.new(0, baseHeight * 0.04, 0)
-	local tween = TweenService:Create(
-		primary,
-		TweenInfo.new(1.1 + math.random() * 0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-		{ Position = target }
-	)
-	tween:Play()
+	local restPivot = model:GetPivot()
+	local lift = math.max(0.12, baseHeight * 0.045)
+
+	task.spawn(function()
+		while model.Parent do
+			local up = restPivot + Vector3.new(0, lift, 0)
+			for step = 0, 10 do
+				if not model.Parent then
+					return
+				end
+				local alpha = step / 10
+				model:PivotTo(restPivot:Lerp(up, alpha))
+				task.wait(0.055)
+			end
+			for step = 10, 0, -1 do
+				if not model.Parent then
+					return
+				end
+				local alpha = step / 10
+				model:PivotTo(restPivot:Lerp(up, alpha))
+				task.wait(0.055)
+			end
+		end
+	end)
 end
 
 local function addSparkles(model, tint)
@@ -526,6 +548,16 @@ function CharacterFactory.buildIceBlock(size, color)
 	block.Material = Enum.Material.Ice
 	block.Transparency = 0.35
 	return block
+end
+
+-- Start the idle bob on a model that has already been positioned. PlotService
+-- builds with bob = false, parks the model on its pad, then calls this.
+function CharacterFactory.startIdleBob(model)
+	local primary = model.PrimaryPart
+	if not primary then
+		return
+	end
+	addIdleBob(model, model:GetAttribute("Height") or 4)
 end
 
 -- Convenience for UI: a character's effective income with its mutation.

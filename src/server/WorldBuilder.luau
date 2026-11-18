@@ -205,9 +205,9 @@ local function buildLighting()
 	Lighting.GlobalShadows = true
 	Lighting.EnvironmentDiffuseScale = 0.4
 	Lighting.EnvironmentSpecularScale = 0.5
-	Lighting.FogEnd = 900
-	Lighting.FogStart = 260
-	Lighting.FogColor = Color3.fromRGB(206, 230, 250)
+	Lighting.FogEnd = 6000
+	Lighting.FogStart = 2200
+	Lighting.FogColor = Color3.fromRGB(226, 240, 255)
 
 	local bloom = Lighting:FindFirstChild("PolarBloom")
 	if not bloom then
@@ -235,12 +235,14 @@ local function buildLighting()
 		atmosphere.Name = "PolarAir"
 		atmosphere.Parent = Lighting
 	end
-	atmosphere.Density = 0.32
-	atmosphere.Offset = 0.1
-	atmosphere.Color = Color3.fromRGB(210, 232, 250)
-	atmosphere.Decay = Color3.fromRGB(120, 168, 210)
-	atmosphere.Glare = 0.1
-	atmosphere.Haze = 1.4
+	-- Thin air on purpose: the island has to read in a screenshot, so haze is a
+	-- hint of depth at the rim, never a wash that flattens the whole frame.
+	atmosphere.Density = 0.12
+	atmosphere.Offset = 0.05
+	atmosphere.Color = Color3.fromRGB(226, 240, 255)
+	atmosphere.Decay = Color3.fromRGB(150, 190, 230)
+	atmosphere.Glare = 0.05
+	atmosphere.Haze = 0.25
 end
 
 -- ---------------------------------------------------------------- the plaza

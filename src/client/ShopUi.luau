@@ -46,9 +46,11 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 
 	local frame = Instance.new("Frame")
 	frame.Name = "ShopPanel"
-	frame.AnchorPoint = Vector2.new(0.5, 0.5)
-	frame.Position = UDim2.fromScale(0.5, 0.5)
-	frame.Size = UDim2.fromOffset(1080, 620)
+	frame.AnchorPoint = Vector2.new(1, 0.5)
+	-- Docked right so the island stays visible on the left: the shop you are
+	-- standing in is part of the sell.
+	frame.Position = UDim2.new(1, -16, 0.5, 0)
+	frame.Size = UDim2.fromOffset(880, 600)
 	frame.BackgroundColor3 = Color3.fromRGB(10, 18, 34)
 	frame.BackgroundTransparency = 0.04
 	frame.BorderSizePixel = 0
@@ -271,8 +273,8 @@ function ShopUi.new(gui, fireHatch, fireUpgrade)
 
 	function self.show()
 		frame.Visible = true
-		frame.Size = UDim2.fromOffset(940, 540)
-		TweenService:Create(frame, TweenInfo.new(0.22, Enum.EasingStyle.Back), { Size = UDim2.fromOffset(1080, 620) }):Play()
+		frame.Size = UDim2.fromOffset(760, 520)
+		TweenService:Create(frame, TweenInfo.new(0.22, Enum.EasingStyle.Back), { Size = UDim2.fromOffset(880, 600) }):Play()
 	end
 
 	function self.hide()
