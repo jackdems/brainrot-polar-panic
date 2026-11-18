@@ -135,6 +135,14 @@ local function wedge(parent, name, size, cframe, color, material)
 	return piece
 end
 
+local function neon(parent, name, size, cframe, color, transparency)
+	return part(parent, name, size, cframe, color, Enum.Material.Neon, {
+		CanCollide = false,
+		CanQuery = false,
+		Transparency = transparency or 0,
+	})
+end
+
 -- A big readable billboard. `lines` is a list of {text, color, height, font}.
 -- The card is a fixed-height stack of labels so nothing depends on a layout pass
 -- measured at load time — a screenshot pipeline cannot afford a frame where the
@@ -385,9 +393,9 @@ local function buildLighting()
 		bloom.Name = "PolarBloom"
 		bloom.Parent = Lighting
 	end
-	bloom.Intensity = 0.35
-	bloom.Size = 24
-	bloom.Threshold = 1.6
+	bloom.Intensity = 0.12
+	bloom.Size = 20
+	bloom.Threshold = 1.85
 
 	local grade = Lighting:FindFirstChild("PolarGrade")
 	if not grade then
@@ -396,7 +404,7 @@ local function buildLighting()
 		grade.Parent = Lighting
 	end
 	grade.Brightness = -0.01
-	grade.Contrast = 0.06
+	grade.Contrast = 0.03
 	grade.Saturation = 0.12
 
 	local rays = Lighting:FindFirstChild("PolarSunRays")
@@ -405,7 +413,7 @@ local function buildLighting()
 		rays.Name = "PolarSunRays"
 		rays.Parent = Lighting
 	end
-	rays.Intensity = 0.03
+	rays.Intensity = 0.02
 	rays.Spread = 0.7
 end
 
@@ -419,11 +427,11 @@ local function buildSpawnPlaza(folder)
 	local center = WorldBuilder.plazaCenter
 
 	part(plaza, "PlazaFloor", Vector3.new(140, 2, 96), CFrame.new(center + Vector3.new(0, 3.4, 0)),
-		Color3.fromRGB(226, 240, 255), Enum.Material.Ice)
+		Color3.fromRGB(140, 190, 230), Enum.Material.SmoothPlastic)
 
 	for index = -2, 2 do
 		part(plaza, "PlazaStripe", Vector3.new(140, 0.2, 2),
-			CFrame.new(center + Vector3.new(0, 4.5, index * 18)), Color3.fromRGB(180, 214, 246),
+			CFrame.new(center + Vector3.new(0, 4.5, index * 18)), Color3.fromRGB(90, 140, 190),
 			Enum.Material.SmoothPlastic)
 	end
 
@@ -433,16 +441,18 @@ local function buildSpawnPlaza(folder)
 	spawn.Size = Vector3.new(24, 1.6, 24)
 	spawn.CFrame = CFrame.new(WorldBuilder.spawnPosition - Vector3.new(0, 5, 0))
 	spawn.Color = Color3.fromRGB(110, 200, 255)
-	spawn.Material = Enum.Material.Neon
+	spawn.Material = Enum.Material.SmoothPlastic
 	spawn.TopSurface = Enum.SurfaceType.Smooth
 	spawn.Neutral = true
 	spawn.Duration = 0
 	spawn.Parent = plaza
 
-	local spawnRing = cylinder(plaza, "SpawnRing", Vector3.new(1.2, 30, 30),
+	local spawnRing = cylinder(plaza, "SpawnRing", Vector3.new(0.2, 30, 30),
 		CFrame.new(WorldBuilder.spawnPosition - Vector3.new(0, 5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-		Color3.fromRGB(255, 255, 255), Enum.Material.Neon)
+		Color3.fromRGB(120, 220, 255), Enum.Material.Neon)
 	spawnRing.CanCollide = false
+	spawnRing.CanQuery = false
+	spawnRing.Transparency = 0.3
 
 	-- The welcome sign: the first thing a player reads. Slab plus billboard, the
 	-- same pattern as the den signs so the whole island reads consistently.
@@ -492,25 +502,33 @@ local function buildEggMachine(parent, egg, position)
 	model.Name = "EggMachine_" .. egg.id
 	model.Parent = parent
 
+	-- Plinth: deep navy SmoothPlastic with 1-stud Neon trim rim
 	local plinth = part(model, "Plinth", Vector3.new(12, 4, 12), CFrame.new(position + Vector3.new(0, 2, 0)),
-		Color3.fromRGB(38, 52, 78), Enum.Material.Metal)
-	part(model, "PlinthTrim", Vector3.new(13.5, 0.8, 13.5), CFrame.new(position + Vector3.new(0, 4, 0)),
-		egg.color, Enum.Material.Neon)
+		Color3.fromRGB(18, 30, 52), Enum.Material.SmoothPlastic)
+	neon(model, "PlinthTrim", Vector3.new(13.5, 0.8, 13.5), CFrame.new(position + Vector3.new(0, 4, 0)),
+		egg.color, 0.15)
 
-	-- The egg: a ball with a ring around it, tinted to the machine's rarity colour.
-	-- PLAYER-SCALE: egg ~5-6 studs, machine ~10 studs tall total
-	local eggBody = ball(model, "Egg", 5.5, CFrame.new(position + Vector3.new(0, 7.5, 0)), egg.color, Enum.Material.Neon)
+	-- The egg: PLAYER-SCALE ~5-6 studs, SmoothPlastic with 1-stud Neon core/ring
+	local eggBody = ball(model, "Egg", 5.5, CFrame.new(position + Vector3.new(0, 7.5, 0)), egg.color, Enum.Material.SmoothPlastic)
 	eggBody.CanCollide = false
-	local shellRing = cylinder(model, "EggRing", Vector3.new(0.8, 7, 7),
+	-- Small Neon core inside (≤1 stud)
+	local core = ball(model, "EggCore", 0.9, CFrame.new(position + Vector3.new(0, 7.5, 0)), egg.color, Enum.Material.Neon)
+	core.CanCollide = false
+	core.CanQuery = false
+	core.Transparency = 0.15
+	-- 1-stud Neon ring around the egg
+	local shellRing = cylinder(model, "EggRing", Vector3.new(0.2, 7, 7),
 		CFrame.new(position + Vector3.new(0, 7.5, 0)) * CFrame.Angles(0, 0, math.rad(90)), egg.accent,
 		Enum.Material.Neon)
 	shellRing.CanCollide = false
-	shellRing.Transparency = 0.25
+	shellRing.CanQuery = false
+	shellRing.Transparency = 0.2
 
 	local glow = Instance.new("PointLight")
 	glow.Color = egg.color
 	glow.Range = 18
-	glow.Brightness = 2.4
+	glow.Brightness = 1.8
+	glow.Shadows = false
 	glow.Parent = eggBody
 
 	model.PrimaryPart = plinth
@@ -554,12 +572,13 @@ local function buildKiosk(parent, name, title, subtitle, position, color)
 	model.Name = name
 	model.Parent = parent
 
+	-- Base: deep navy SmoothPlastic with 1-stud Neon trim rim
 	local base = part(model, "Base", Vector3.new(12, 8, 12), CFrame.new(position + Vector3.new(0, 4, 0)),
-		Color3.fromRGB(40, 56, 84), Enum.Material.Metal)
-	part(model, "Trim", Vector3.new(13.5, 1, 13.5), CFrame.new(position + Vector3.new(0, 8, 0)), color,
-		Enum.Material.Neon)
+		Color3.fromRGB(18, 30, 52), Enum.Material.SmoothPlastic)
+	neon(model, "Trim", Vector3.new(13.5, 1, 13.5), CFrame.new(position + Vector3.new(0, 8, 0)), color, 0.15)
+	-- Roof: mid-tone ice-blue SmoothPlastic
 	local roof = part(model, "Roof", Vector3.new(15, 1.4, 15), CFrame.new(position + Vector3.new(0, 12.6, 0)),
-		Color3.fromRGB(226, 240, 255), Enum.Material.Snow)
+		Color3.fromRGB(126, 190, 236), Enum.Material.SmoothPlastic)
 	roof.CanCollide = false
 
 	model.PrimaryPart = base
@@ -590,7 +609,7 @@ local function buildConveyor(parent)
 	-- Its own apron. The belt now lives on the shop side of the island, so it
 	-- gets a floor of its own rather than relying on the shop slab reaching here.
 	local apron = part(model, "ConveyorApron", Vector3.new(104, 2, 132),
-		CFrame.new(center + Vector3.new(0, 3.2, 0)), Color3.fromRGB(236, 244, 255), Enum.Material.Ice)
+		CFrame.new(center + Vector3.new(0, 3.2, 0)), Color3.fromRGB(180, 220, 255), Enum.Material.SmoothPlastic)
 	apron.CanCollide = true
 
 	-- A rounded rectangle path: four straight runs joined by corner pads.
@@ -634,20 +653,21 @@ local function buildConveyor(parent)
 	table.insert(waypoints, center + Vector3.new(33, 5.4, 34))
 	table.insert(waypoints, center + Vector3.new(-33, 5.4, 34))
 
-	-- A big sign so the free-loot route is discoverable.
-	local signPost = part(model, "ConveyorSign", Vector3.new(30, 11, 1.6),
-		CFrame.new(center + Vector3.new(0, 20, -42)), Color3.fromRGB(16, 28, 48), Enum.Material.SmoothPlastic)
+	-- A sign for the conveyor, positioned so it does not overlap the "UNCLAIMED DEN" signs
+	-- or the lock kiosk billboard from the plaza camera angle. Staggered height at 8 studs.
+	local signPost = part(model, "ConveyorSign", Vector3.new(26, 8, 1.2),
+		CFrame.new(center + Vector3.new(0, 8, -44)), Color3.fromRGB(16, 28, 48), Enum.Material.SmoothPlastic)
 	signPost.CanCollide = false
 	surfaceText(signPost, Enum.NormalId.Front, "FREE BRAINROT CONVEYOR", Color3.fromRGB(120, 255, 190),
 		Color3.fromRGB(10, 18, 34), Color3.fromRGB(120, 255, 190))
-	billboard(model, signPost, Vector2.new(440, 120), Vector3.new(0, 8, 0), {
-		{ text = "FREE BRAINROT CONVEYOR", color = Color3.fromRGB(120, 255, 190), height = 44, font = Enum.Font.FredokaOne },
-		{ text = "Walk into one to grab it. Nobody is watching.", color = Color3.fromRGB(200, 232, 255), height = 32, font = Enum.Font.GothamBold },
+	billboard(model, signPost, Vector2.new(400, 100), Vector3.new(0, 4, 0), {
+		{ text = "FREE BRAINROT CONVEYOR", color = Color3.fromRGB(120, 255, 190), height = 36, font = Enum.Font.FredokaOne },
+		{ text = "Walk into one to grab it. Nobody is watching.", color = Color3.fromRGB(200, 232, 255), height = 26, font = Enum.Font.GothamBold },
 	}, Color3.fromRGB(10, 18, 34), Color3.fromRGB(120, 255, 190))
 
-	for _, x in ipairs({ -13, 13 }) do
-		part(model, "SignLeg", Vector3.new(1, 14, 1), CFrame.new(center + Vector3.new(x, 13, -42)),
-			Color3.fromRGB(220, 226, 236), Enum.Material.Metal)
+	for _, x in ipairs({ -11, 11 }) do
+		part(model, "SignLeg", Vector3.new(1, 6, 1), CFrame.new(center + Vector3.new(x, 4, -44)),
+			Color3.fromRGB(58, 78, 110), Enum.Material.SmoothPlastic)
 	end
 
 	return { model = model, waypoints = waypoints, center = center }
@@ -658,9 +678,9 @@ local function buildShopDistrict(folder)
 	shop.Name = "ShopDistrict"
 	shop.Parent = folder
 
-	-- The shop apron.
+	-- The shop apron: mid-tone ice-blue SmoothPlastic (not bright white)
 	part(shop, "ShopFloor", Vector3.new(120, 2, 260), CFrame.new(WorldBuilder.shopCenter + Vector3.new(0, 3.2, 0)),
-		Color3.fromRGB(238, 246, 255), Enum.Material.Ice)
+		Color3.fromRGB(140, 190, 230), Enum.Material.SmoothPlastic)
 
 	local eggMachines = {}
 	local spacing = 62
@@ -731,19 +751,20 @@ local function buildBase(parent, index, position)
 			local padPosition = position + Vector3.new(localX, 4.9, localZ)
 
 			local socket = cylinder(model, "Pad_" .. padIndex, Vector3.new(0.8, 7, 7),
-				CFrame.new(padPosition) * CFrame.Angles(0, 0, math.rad(90)),
-				Color3.fromRGB(96, 150, 210), Enum.Material.SmoothPlastic)
-			socket.CanCollide = false
-			socket:SetAttribute("PadIndex", padIndex)
+						CFrame.new(padPosition) * CFrame.Angles(0, 0, math.rad(90)),
+						Color3.fromRGB(96, 150, 210), Enum.Material.SmoothPlastic)
+					socket.CanCollide = false
+					socket:SetAttribute("PadIndex", padIndex)
 
-			local glow = cylinder(model, "PadGlow_" .. padIndex, Vector3.new(1, 6.2, 6.2),
-				CFrame.new(padPosition + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-				Color3.fromRGB(120, 220, 255), Enum.Material.Neon)
-			glow.CanCollide = false
-			glow.CanQuery = false
-			glow.Transparency = 0.55
+					-- Thin Neon glow ring (≤1 stud) around the pad
+					local glow = cylinder(model, "PadGlow_" .. padIndex, Vector3.new(0.2, 6.2, 6.2),
+						CFrame.new(padPosition + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+						Color3.fromRGB(120, 220, 255), Enum.Material.Neon)
+					glow.CanCollide = false
+					glow.CanQuery = false
+					glow.Transparency = 0.45
 
-			pads[padIndex] = { part = socket, glow = glow, position = padPosition }
+					pads[padIndex] = { part = socket, glow = glow, position = padPosition }
 		end
 	end
 
@@ -980,14 +1001,17 @@ end
 
 local function buildLantern(parent, position)
 	local post = part(parent, "LanternPost", Vector3.new(0.7, 12, 0.7), CFrame.new(position + Vector3.new(0, 10, 0)),
-		Color3.fromRGB(64, 72, 96), Enum.Material.Metal)
-	local bulb = part(parent, "LanternBulb", Vector3.new(2.2, 2.6, 2.2), CFrame.new(position + Vector3.new(0, 17, 0)),
+		Color3.fromRGB(24, 44, 72), Enum.Material.SmoothPlastic)
+	-- Small Neon bulb (≤1 stud) with PointLight
+	local bulb = part(parent, "LanternBulb", Vector3.new(0.9, 1.1, 0.9), CFrame.new(position + Vector3.new(0, 17, 0)),
 		Color3.fromRGB(255, 226, 150), Enum.Material.Neon)
 	bulb.CanCollide = false
+	bulb.CanQuery = false
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 214, 140)
-	light.Range = 34
-	light.Brightness = 1.8
+	light.Range = 30
+	light.Brightness = 1.5
+	light.Shadows = false
 	light.Parent = bulb
 	return post
 end

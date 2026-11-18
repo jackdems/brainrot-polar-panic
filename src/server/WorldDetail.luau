@@ -250,21 +250,23 @@ function WorldDetail.buildCarpetSpine(worldFolder, layout)
 			CFrame.new(spot.X, deckY, spot.Z) * CFrame.Angles(0, 0, math.rad(90)),
 			P.carpet, Enum.Material.Fabric, { CanCollide = false })
 		disc:SetAttribute("IsCarpet", true)
-		cylinder(folder, "CarpetBendRing", Vector3.new(0.5, 16.8, 16.8),
+		-- 1-stud Neon ring (trim only)
+		cylinder(folder, "CarpetBendRing", Vector3.new(0.2, 16.8, 16.8),
 			CFrame.new(spot.X, deckY - 0.2, spot.Z) * CFrame.Angles(0, 0, math.rad(90)),
 			P.carpetGlow, Enum.Material.Neon,
-			{ CanCollide = false, CanQuery = false, Transparency = 0.18 })
+			{ CanCollide = false, CanQuery = false, Transparency = 0.25 })
 	end
 
 	-- The spine's own sign, at the plaza mouth: the one place a player standing on
 	-- spawn is already looking.
 	local post = part(folder, "SpineSignPost", Vector3.new(1.2, 14, 1.2),
-		CFrame.new(16, deckY + 7, 140), Color3.fromRGB(206, 216, 232), Enum.Material.Metal)
+		CFrame.new(16, deckY + 7, 140), Color3.fromRGB(24, 44, 72), Enum.Material.SmoothPlastic)
 	post.CanCollide = false
 	local panel = part(folder, "SpineSignPanel", Vector3.new(26, 8, 1.0),
 		CFrame.new(16, deckY + 15, 140), P.navy, Enum.Material.SmoothPlastic, { CanCollide = false })
+	-- 1-stud Neon rim
 	neon(folder, "SpineSignRim", Vector3.new(27.6, 9.4, 0.6),
-		CFrame.new(16, deckY + 15, 140.6), P.carpetGlow, 0.2)
+		CFrame.new(16, deckY + 15, 140.6), P.carpetGlow, 0.15)
 	local surface = Instance.new("SurfaceGui")
 	surface.Name = "SignSurface"
 	surface.Face = Enum.NormalId.Back
@@ -319,28 +321,28 @@ function WorldDetail.buildLanternRoute(worldFolder, layout)
 
 	for index, spot in ipairs(spots) do
 		local base = Vector3.new(spot.X, deckY, spot.Z)
+		-- Lantern post: dark wood/ice-blue SmoothPlastic (not Neon), with a small warm PointLight on the bulb.
 		local post = part(folder, "LanternPost", Vector3.new(0.8, 13, 0.8),
-			CFrame.new(base + Vector3.new(0, 6.5, 0)), Color3.fromRGB(58, 68, 92), Enum.Material.Metal)
+			CFrame.new(base + Vector3.new(0, 6.5, 0)), Color3.fromRGB(24, 44, 72), Enum.Material.SmoothPlastic)
 		post.CanCollide = false
 
 		-- An arm so the lamp hangs over the path instead of sitting on the post.
 		part(folder, "LanternArm", Vector3.new(3.4, 0.5, 0.5),
 			CFrame.new(base + Vector3.new(1.6 * (if index % 2 == 0 then 1 else -1), 12.4, 0)),
-			Color3.fromRGB(58, 68, 92), Enum.Material.Metal, { CanCollide = false, CanQuery = false })
+			Color3.fromRGB(24, 44, 72), Enum.Material.SmoothPlastic, { CanCollide = false, CanQuery = false })
 
-		local bulb = part(folder, "LanternBulb", Vector3.new(2.2, 2.8, 2.2),
+		-- Small Neon bulb (≤1 stud accent) with warm PointLight.
+		local bulb = part(folder, "LanternBulb", Vector3.new(0.9, 1.1, 0.9),
 			CFrame.new(base + Vector3.new(3.0 * (if index % 2 == 0 then 1 else -1), 11.2, 0)),
 			Color3.fromRGB(255, 226, 150), Enum.Material.Neon, { CanCollide = false })
-		part(folder, "LanternCap", Vector3.new(2.9, 0.4, 2.9),
-			CFrame.new(bulb.Position + Vector3.new(0, 1.55, 0)),
-			Color3.fromRGB(34, 42, 62), Enum.Material.Metal, { CanCollide = false, CanQuery = false })
+		part(folder, "LanternCap", Vector3.new(1.3, 0.3, 1.3),
+			CFrame.new(bulb.Position + Vector3.new(0, 0.7, 0)),
+			Color3.fromRGB(18, 30, 52), Enum.Material.SmoothPlastic, { CanCollide = false, CanQuery = false })
 
 		local light = Instance.new("PointLight")
 		light.Color = Color3.fromRGB(255, 208, 138)
-		light.Range = 40
-		light.Brightness = 2.2
-		-- Shadows off: sixteen shadow-casting point lights turns the ground into a
-		-- grid of overlapping light maps and costs more than the sun does.
+		light.Range = 30
+		light.Brightness = 1.8
 		light.Shadows = false
 		light.Parent = bulb
 	end
@@ -397,9 +399,10 @@ function WorldDetail.buildCrystalField(worldFolder, layout)
 			end
 		end
 
-		local core = ball(model, "Core", scale * 0.55, CFrame.new(base + Vector3.new(0, scale * 0.55, 0)),
+		local core = ball(model, "Core", scale * 0.3, CFrame.new(base + Vector3.new(0, scale * 0.55, 0)),
 			P.cyan, Enum.Material.Neon)
-		core.Transparency = 0.22
+		core.Transparency = 0.3
+		core.Size = Vector3.new(scale * 0.4, scale * 0.4, scale * 0.4) -- ≤1 stud accent
 
 		local glow = Instance.new("PointLight")
 		glow.Color = Color3.fromRGB(150, 226, 255)
@@ -480,22 +483,25 @@ function WorldDetail.buildWaySigns(worldFolder, layout)
 
 	local deckY = layout.deckY
 
-	local function sign(position, text, color, yaw)
+	local function sign(position, text, color, yaw, height)
 		local model = Instance.new("Model")
 		model.Name = "WaySign"
 		model.Parent = folder
 
 		local base = Vector3.new(position.X, deckY, position.Z)
+		-- Post: dark wood/ice-blue SmoothPlastic, not Neon.
 		local post = part(model, "Post", Vector3.new(1.0, 14, 1.0), CFrame.new(base + Vector3.new(0, 7, 0)),
-			Color3.fromRGB(206, 216, 232), Enum.Material.Metal)
+			Color3.fromRGB(24, 44, 72), Enum.Material.SmoothPlastic)
 		post.CanCollide = false
 
 		-- The arrow head: a wedge that sticks out of the panel in the pointing
 		-- direction, so the sign is an arrow and not a rectangle with text.
 		local rotation = CFrame.Angles(0, yaw or 0, 0)
-		local panelPosition = base + Vector3.new(0, 15.2, 0)
+		local panelPosition = base + Vector3.new(0, height, 0)
+		-- 1-stud Neon rim around the panel.
 		neon(model, "SignRim", Vector3.new(20, 7, 0.6),
-			CFrame.new(panelPosition) * rotation * CFrame.new(0, 0, 0.3), color, 0.2)
+			CFrame.new(panelPosition) * rotation * CFrame.new(0, 0, 0.3), color, 0.15)
+		-- Panel: deep navy SmoothPlastic with white text.
 		local panel = part(model, "SignPanel", Vector3.new(18.4, 5.4, 0.9),
 			CFrame.new(panelPosition) * rotation, P.navy, Enum.Material.SmoothPlastic,
 			{ CanCollide = false })
@@ -541,10 +547,10 @@ function WorldDetail.buildWaySigns(worldFolder, layout)
 		return model
 	end
 
-	sign(Vector3.new(-34, 0, 130), "EGGS  →", P.amber, math.rad(-28))
-	sign(Vector3.new(38, 0, 120), "DENS  →", P.mint, math.rad(24))
-	sign(Vector3.new(-108, 0, 108), "LOCK & BOOTS  →", P.cyan, math.rad(-52))
-	sign(Vector3.new(-150, 0, 176), "MY DEN  ↑", P.amber, math.rad(0))
+	sign(Vector3.new(-34, 0, 130), "EGGS  →", P.amber, math.rad(-28), 16)
+	sign(Vector3.new(38, 0, 120), "DENS  →", P.mint, math.rad(24), 12)
+	sign(Vector3.new(-108, 0, 108), "LOCK & BOOTS  →", P.cyan, math.rad(-52), 8)
+	sign(Vector3.new(-150, 0, 176), "MY DEN  ↑", P.amber, math.rad(0), 14)
 
 	return folder
 end
@@ -627,12 +633,13 @@ function WorldDetail.buildAurora(worldFolder)
 			local length = (to - from).Magnitude
 			if length > 0.1 then
 				local frame = CFrame.lookAt(from + (to - from) * 0.5, to)
+				-- Thin Neon segments (≤1 stud thick) for the aurora
 				local segment = part(folder, "AuroraRibbon",
-					Vector3.new(spec.spread, 26, length * 1.2),
+					Vector3.new(0.8, 1.5, length * 1.2),
 					frame * CFrame.Angles(math.rad(14), 0, math.rad(8)),
 					spec.color, Enum.Material.Neon,
 					{ CanCollide = false, CanQuery = false, CastShadow = false })
-				segment.Transparency = 0.55 + index * 0.03
+				segment.Transparency = 0.45 + index * 0.03
 				segment:SetAttribute("IsAurora", true)
 				table.insert(segments, segment)
 			end

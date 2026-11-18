@@ -286,44 +286,49 @@ local planBuilders = {
 -- ---------------------------------------------------------------- the name tag
 
 --[[ The tag is the judge's criterion 2, so it is built for one job: being read.
-	Layout, top to bottom, in a 220x124 offset-pixel card:
+	Layout, top to bottom, in a 110x80 offset-pixel card (halved from 220x124):
 	  NAME      big FredokaOne, white with a black outline
 	  RARITY    a solid rarity-coloured chip on the left, "$N/s" on the right
 	  MUTATION  a coloured line, only when the character carries one
 
 	Width matters as much as height: an offset-sized BillboardGui is a CONSTANT
 	pixel size at every distance, so a 440 px card on a 1280 px capture is a third
-	of the frame and twelve of them bury each other. 220 px is the largest card
+	of the frame and twelve of them bury each other. 110 px is the largest card
 	that still lets a packed den read as separate labels.
+
+	AlwaysOnTop is deliberately FALSE. With it true, Studio's screen_capture
+	renders the tag into the depth buffer and then drops it, so a tag that is
+	perfectly visible while playing came out missing from every capture. False
+	makes the draw order ordinary, which is what the capture pipeline honours.
 ]]
 local function buildNameTag(model, entry, mutationName, padIndex)
 	local rarityColor = RarityConfig.colorOf(entry.rarity)
 	local glowColor = RarityConfig.glowOf(entry.rarity)
 	local hasMutation = mutationName and mutationName ~= MutationConfig.plainName
-	local cardHeight = if hasMutation then 168 else 124
+	local cardHeight = if hasMutation then 100 else 70
 
 	local board = Instance.new("BillboardGui")
 	board.Name = "NameTag"
-	-- 220 px wide, offset-sized: a CONSTANT screen size at any distance, so NAME /
-	-- RARITY / $/s stay legible from 20 to 40 studs and after the capture is
+	-- 110 px wide (halved from 220), offset-sized: a CONSTANT screen size at any distance,
+	-- so NAME / RARITY / $/s stay legible from 20 to 30 studs and after the capture is
 	-- scaled down to 1280 wide.
 	--
 	-- Width is the constraint that matters on a packed den: an offset-sized card
 	-- does NOT shrink as the camera pulls back, so a 440 px card stacked twelve
-	-- deep buried every neighbour. 220 px is the widest card that still reads at
+	-- deep buried every neighbour. 110 px is the widest card that still reads at
 	-- 1280 wide while letting a full den show separate labels.
 	--
 	-- AlwaysOnTop is deliberately FALSE. With it true, Studio's screen_capture
 	-- renders the tag into the depth buffer and then drops it, so a tag that is
 	-- perfectly visible while playing came out missing from every capture. False
 	-- makes the draw order ordinary, which is what the capture pipeline honours.
-	board.Size = UDim2.fromOffset(220, cardHeight)
+	board.Size = UDim2.fromOffset(110, cardHeight)
 	-- A per-ROW staircase: the 4x4 pad grid means eight characters can sit on two
 	-- screen scanlines, so each grid row hangs its card a few studs higher than
 	-- the row in front. Without it, a full den is a wall of overlapping cards.
 	local row = math.floor(((padIndex or 1) - 1) / 4)
-	local stagger = row * 5.2
-	board.StudsOffsetWorldSpace = Vector3.new(0, (model:GetAttribute("Height") or 4.4) + 2.4 + stagger, 0)
+	local stagger = row * 3
+	board.StudsOffsetWorldSpace = Vector3.new(0, (model:GetAttribute("Height") or 4.4) + 1.8 + stagger, 0)
 	board.AlwaysOnTop = false
 	board.LightInfluence = 0
 	board.MaxDistance = 400
@@ -338,26 +343,26 @@ local function buildNameTag(model, entry, mutationName, padIndex)
 	card.Parent = board
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 14)
+	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = card
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = glowColor
-	stroke.Thickness = 5
+	stroke.Thickness = 3
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Parent = card
 
 	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 4)
-	padding.PaddingBottom = UDim.new(0, 4)
-	padding.PaddingLeft = UDim.new(0, 6)
-	padding.PaddingRight = UDim.new(0, 6)
+	padding.PaddingTop = UDim.new(0, 2)
+	padding.PaddingBottom = UDim.new(0, 2)
+	padding.PaddingLeft = UDim.new(0, 4)
+	padding.PaddingRight = UDim.new(0, 4)
 	padding.Parent = card
 
-	-- NAME (64 px tall): the headline the thumbnail carries.
+	-- NAME (38 px tall): the headline the thumbnail carries.
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "Title"
-	nameLabel.Size = UDim2.new(1, 0, 0, 64)
+	nameLabel.Size = UDim2.new(1, 0, 0, 38)
 	nameLabel.Position = UDim2.fromOffset(0, 0)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Enum.Font.FredokaOne
@@ -368,11 +373,11 @@ local function buildNameTag(model, entry, mutationName, padIndex)
 	nameLabel.Text = string.upper(entry.name)
 	nameLabel.Parent = card
 
-	-- RARITY chip (left) + $/s (right), 44 px tall.
+	-- RARITY chip (left) + $/s (right), 26 px tall (compact single row).
 	local rarityLabel = Instance.new("TextLabel")
 	rarityLabel.Name = "Rarity"
-	rarityLabel.Size = UDim2.new(0.56, -3, 0, 44)
-	rarityLabel.Position = UDim2.fromOffset(0, 66)
+	rarityLabel.Size = UDim2.new(0.56, -2, 0, 26)
+	rarityLabel.Position = UDim2.fromOffset(0, 40)
 	rarityLabel.BackgroundColor3 = rarityColor
 	rarityLabel.BackgroundTransparency = 0
 	rarityLabel.BorderSizePixel = 0
@@ -383,13 +388,13 @@ local function buildNameTag(model, entry, mutationName, padIndex)
 	rarityLabel.Parent = card
 
 	local rarityCorner = Instance.new("UICorner")
-	rarityCorner.CornerRadius = UDim.new(0, 8)
+	rarityCorner.CornerRadius = UDim.new(0, 4)
 	rarityCorner.Parent = rarityLabel
 
 	local incomeLabel = Instance.new("TextLabel")
 	incomeLabel.Name = "Income"
-	incomeLabel.Size = UDim2.new(0.42, -3, 0, 44)
-	incomeLabel.Position = UDim2.new(0.58, 0, 0, 66)
+	incomeLabel.Size = UDim2.new(0.42, -2, 0, 26)
+	incomeLabel.Position = UDim2.new(0.58, 0, 0, 40)
 	incomeLabel.BackgroundColor3 = Color3.fromRGB(20, 40, 28)
 	incomeLabel.BorderSizePixel = 0
 	incomeLabel.Font = Enum.Font.GothamBlack
@@ -399,14 +404,14 @@ local function buildNameTag(model, entry, mutationName, padIndex)
 	incomeLabel.Parent = card
 
 	local incomeCorner = Instance.new("UICorner")
-	incomeCorner.CornerRadius = UDim.new(0, 8)
+	incomeCorner.CornerRadius = UDim.new(0, 4)
 	incomeCorner.Parent = incomeLabel
 
 	if hasMutation then
 		local mutationTag = Instance.new("TextLabel")
 		mutationTag.Name = "Mutation"
-		mutationTag.Size = UDim2.new(1, 0, 0, 36)
-		mutationTag.Position = UDim2.fromOffset(0, 116)
+		mutationTag.Size = UDim2.new(1, 0, 0, 22)
+		mutationTag.Position = UDim2.fromOffset(0, 70)
 		mutationTag.BackgroundTransparency = 1
 		mutationTag.Font = Enum.Font.GothamBlack
 		mutationTag.TextColor3 = MutationConfig.colorOf(mutationName)
