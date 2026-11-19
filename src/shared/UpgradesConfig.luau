@@ -15,7 +15,7 @@ UpgradesConfig.padPrices = {
 }
 
 -- Cost of the next locked pad for a player who already owns `unlockedPads`.
-function UpgradesConfig.padPrice(unlockedPads)
+function UpgradesConfig.padPrice(unlockedPads: number?): number
 	local index = (unlockedPads or UpgradesConfig.freePadCount) - UpgradesConfig.freePadCount + 1
 	if index < 1 then
 		index = 1
@@ -47,7 +47,7 @@ for _, upgrade in ipairs(UpgradesConfig.upgrades) do
 end
 
 -- Price of the next level, or nil when the upgrade is maxed.
-function UpgradesConfig.nextPrice(upgradeId, currentLevel)
+function UpgradesConfig.nextPrice(upgradeId: string, currentLevel: number?): number?
 	local upgrade = UpgradesConfig.byId[upgradeId]
 	if not upgrade then
 		return nil
@@ -63,12 +63,12 @@ UpgradesConfig.lockSeconds = 60
 
 UpgradesConfig.baseWalkSpeed = 16
 
-function UpgradesConfig.walkSpeedFor(speedBootsLevel)
+function UpgradesConfig.walkSpeedFor(speedBootsLevel: number?): number
 	return UpgradesConfig.baseWalkSpeed * (1 + 0.25 * math.clamp(speedBootsLevel or 0, 0, 3))
 end
 
 -- "$25,000" / "$1.2M": the same short money format the whole UI uses.
-function UpgradesConfig.moneyText(amount)
+function UpgradesConfig.moneyText(amount: number?): string
 	local number = math.floor(amount or 0)
 	if number >= 1e9 then
 		return string.format("$%.1fB", number / 1e9)

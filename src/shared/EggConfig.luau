@@ -59,7 +59,7 @@ EggConfig.luckShiftPerLevel = 5
 
 -- Egg Luck moves `luckLevel * 5` percentage points out of the weakest rarity and
 -- into the strongest, so a maxed player hatches noticeably better from the same egg.
-function EggConfig.weightsFor(egg, luckLevel)
+function EggConfig.weightsFor(egg: { weights: {[string]: number} }, luckLevel: number?): {[string]: number}
 	local weights = {}
 	for rarityName, weight in pairs(egg.weights) do
 		weights[rarityName] = weight
@@ -89,7 +89,7 @@ end
 
 -- Walk a weight table with one uniform draw. Kept here so the hatch roll and the
 -- conveyor roll share the same maths.
-function EggConfig.pickRarity(weights, random)
+function EggConfig.pickRarity(weights: {[string]: number}, random: Random): string
 	local total = 0
 	for _, weight in pairs(weights) do
 		total += weight
@@ -114,18 +114,18 @@ end
 -- The conveyor's own loot table: Common-heavy, a flat 2% Epic, nothing above.
 EggConfig.conveyorWeights = { Common = 68, Uncommon = 22, Rare = 8, Epic = 2 }
 
-function EggConfig.isUnlocked(egg, rebirthCount)
+function EggConfig.isUnlocked(egg: { requiresRebirth: number }, rebirthCount: number?): boolean
 	return (rebirthCount or 0) >= (egg.requiresRebirth or 0)
 end
 
 -- The best rarity an egg can possibly pay out at this luck level: the shop card
 -- prints it as the top prize so a player knows what they are chasing.
-function EggConfig.topPrize(egg, luckLevel)
+function EggConfig.topPrize(egg: { weights: {[string]: number}, requiresRebirth: number }, luckLevel: number?): string
 	return RarityConfig.topOf(EggConfig.weightsFor(egg, luckLevel or 0))
 end
 
 -- Human-readable odds, e.g. "COMM 70% · UNCO 25% · RARE 5%".
-function EggConfig.oddsText(egg, luckLevel)
+function EggConfig.oddsText(egg: { weights: {[string]: number}, requiresRebirth: number }, luckLevel: number?): string
 	return RarityConfig.oddsLine(EggConfig.weightsFor(egg, luckLevel or 0))
 end
 

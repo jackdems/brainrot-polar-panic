@@ -89,7 +89,7 @@ function NetworkGuard.devGrant(player, record, amount)
 	NetworkGuard.pushState(player)
 end
 
-function NetworkGuard.register(name, handler)
+function NetworkGuard.register(name: string, handler: (player: Player, record: any, ...) -> ())
 	handlers[name] = handler
 end
 
@@ -147,7 +147,7 @@ local function cooldownKey(player, name)
 end
 
 -- Called on every client event: identity, record, cooldown, then the handler.
-function NetworkGuard.dispatch(player, name, ...)
+function NetworkGuard.dispatch(player: Player, name: string, ...)
 	local handler = handlers[name]
 	if not handler then
 		return
@@ -175,7 +175,7 @@ end
 
 -- Clear a player's cooldown entries when they leave, so the table cannot grow
 -- without bound on a long-running server.
-function NetworkGuard.forget(player)
+function NetworkGuard.forget(player: Player)
 	local prefix = tostring(player.UserId) .. ":"
 	for key in pairs(cooldownUntil) do
 		if string.sub(key, 1, #prefix) == prefix then
@@ -186,7 +186,7 @@ end
 
 -- ---------------------------------------------------------------- outgoing
 
-function NetworkGuard.notify(player, text, color, duration)
+function NetworkGuard.notify(player: Player, text: string, color: Color3?, duration: number?)
 	if not player or not player.Parent then
 		return
 	end
@@ -200,7 +200,7 @@ function NetworkGuard.notify(player, text, color, duration)
 	end
 end
 
-function NetworkGuard.pushState(player)
+function NetworkGuard.pushState(player: Player)
 	if not player or not player.Parent then
 		return
 	end
@@ -220,7 +220,7 @@ function NetworkGuard.broadcastState()
 	end
 end
 
-function NetworkGuard.banner(kind, text, color, seconds)
+function NetworkGuard.banner(kind: string, text: string, color: Color3?, seconds: number?)
 	local remote = remotes:FindFirstChild("BannerEvent")
 	if not remote then
 		return
@@ -233,7 +233,7 @@ function NetworkGuard.banner(kind, text, color, seconds)
 	})
 end
 
-function NetworkGuard.effect(kind, payload)
+function NetworkGuard.effect(kind: string, payload: any)
 	local remote = remotes:FindFirstChild("EffectEvent")
 	if not remote then
 		return
@@ -241,7 +241,7 @@ function NetworkGuard.effect(kind, payload)
 	remote:FireAllClients(kind, payload)
 end
 
-function NetworkGuard.effectTo(player, kind, payload)
+function NetworkGuard.effectTo(player: Player, kind: string, payload: any)
 	local remote = remotes:FindFirstChild("EffectEvent")
 	if not remote or not player or not player.Parent then
 		return
@@ -249,7 +249,7 @@ function NetworkGuard.effectTo(player, kind, payload)
 	remote:FireClient(player, kind, payload)
 end
 
-function NetworkGuard.hatchResult(player, payload)
+function NetworkGuard.hatchResult(player: Player, payload: any)
 	local remote = remotes:FindFirstChild("HatchResult")
 	if not remote or not player or not player.Parent then
 		return
@@ -261,7 +261,7 @@ end
 
 -- Clean a value the client sent. Anything that is not the expected type is nil,
 -- never an exception, so a malformed payload is simply refused.
-function NetworkGuard.asString(value, maxLength)
+function NetworkGuard.asString(value: any, maxLength: number?): string?
 	if type(value) ~= "string" then
 		return nil
 	end
@@ -271,7 +271,7 @@ function NetworkGuard.asString(value, maxLength)
 	return value
 end
 
-function NetworkGuard.asNumber(value, minimum, maximum)
+function NetworkGuard.asNumber(value: any, minimum: number?, maximum: number?): number?
 	if type(value) ~= "number" then
 		return nil
 	end
@@ -287,7 +287,7 @@ function NetworkGuard.asNumber(value, minimum, maximum)
 	return value
 end
 
-function NetworkGuard.asInt(value, minimum, maximum)
+function NetworkGuard.asInt(value: any, minimum: number?, maximum: number?): number?
 	local number = NetworkGuard.asNumber(value, minimum, maximum)
 	if not number then
 		return nil
@@ -296,7 +296,7 @@ function NetworkGuard.asInt(value, minimum, maximum)
 end
 
 -- The player's humanoid root, or nil when they have no living character.
-function NetworkGuard.rootOf(player)
+function NetworkGuard.rootOf(player: Player): BasePart?
 	local character = player.Character
 	if not character then
 		return nil
@@ -309,7 +309,7 @@ function NetworkGuard.rootOf(player)
 end
 
 -- Distance check against anything with a Position (a base, a pad, an NPC).
-function NetworkGuard.inReach(player, position, reach)
+function NetworkGuard.inReach(player: Player, position: Vector3, reach: number?): boolean
 	local root = NetworkGuard.rootOf(player)
 	if not root or not position then
 		return false
@@ -317,7 +317,7 @@ function NetworkGuard.inReach(player, position, reach)
 	return (root.Position - position).Magnitude <= (reach or NetworkGuard.reachDistance)
 end
 
-function NetworkGuard.alive(player)
+function NetworkGuard.alive(player: Player): boolean
 	local root = NetworkGuard.rootOf(player)
 	return root ~= nil
 end

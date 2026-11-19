@@ -47,7 +47,7 @@ Remotes.all = {}
 
 -- Resolve the live instance for `name`, waiting for the server to publish the
 -- folder. Returns nil for a name that is not in the catalogue.
-function Remotes.get(name)
+function Remotes.get(name: string): RemoteEvent | RemoteFunction | nil
 	local folder = ReplicatedStorage:FindFirstChild(Remotes.folderName)
 	if not folder then
 		folder = ReplicatedStorage:WaitForChild(Remotes.folderName, 30)
@@ -59,7 +59,7 @@ function Remotes.get(name)
 end
 
 -- Every name the server must publish, for the boot script's sanity count.
-function Remotes.count()
+function Remotes.count(): number
 	return #Remotes.events + #Remotes.serverEvents + #Remotes.functions
 end
 

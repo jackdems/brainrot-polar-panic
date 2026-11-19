@@ -61,21 +61,21 @@ end
 
 MutationConfig.plainName = "None"
 
-function MutationConfig.get(name)
+function MutationConfig.get(name: string)
 	return MutationConfig.byName[name] or MutationConfig.byName[MutationConfig.plainName]
 end
 
-function MutationConfig.multiplierOf(name)
+function MutationConfig.multiplierOf(name: string): number
 	return MutationConfig.get(name).multiplier
 end
 
-function MutationConfig.colorOf(name)
+function MutationConfig.colorOf(name: string): Color3
 	return MutationConfig.get(name).color
 end
 
 -- Roll one mutation off the fixed chances. `random` is a Random object so the
 -- caller owns the seed; the roll is a plain cumulative walk over `list`.
-function MutationConfig.roll(random)
+function MutationConfig.roll(random: Random?): string
 	local total = 0
 	for _, mutation in ipairs(MutationConfig.list) do
 		total += mutation.chance
@@ -92,7 +92,7 @@ function MutationConfig.roll(random)
 end
 
 -- "Gold" reads better than "Gold " on a crowded name tag; plain rolls show nothing.
-function MutationConfig.tagText(name)
+function MutationConfig.tagText(name: string): string
 	if name == MutationConfig.plainName then
 		return ""
 	end
@@ -100,7 +100,7 @@ function MutationConfig.tagText(name)
 end
 
 -- The tag line under a mutated character's name: "GOLD  x1.5".
-function MutationConfig.tagLine(name)
+function MutationConfig.tagLine(name: string): string
 	local mutation = MutationConfig.get(name)
 	if mutation.name == MutationConfig.plainName then
 		return ""
@@ -110,7 +110,7 @@ end
 
 -- Force a specific mutation on a live model: the screenshot harness asks for a
 -- Gold and a Diamond on the cover den, and a player would never see that by luck.
-function MutationConfig.byIndex(index)
+function MutationConfig.byIndex(index: number?): { name: string, chance: number, multiplier: number, material: Enum.Material?, tint: Color3?, sparkle: boolean, color: Color3 }
 	return MutationConfig.list[math.clamp(index or 1, 1, #MutationConfig.list)]
 end
 

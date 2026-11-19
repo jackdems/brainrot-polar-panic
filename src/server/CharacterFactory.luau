@@ -23,7 +23,7 @@ local CharacterFactory = {}
 
 -- ---------------------------------------------------------------- part helpers
 
-local function part(model, name, size, cframe, color, material)
+local function part(model: Model, name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material?)
 	local piece = Instance.new("Part")
 	piece.Name = name
 	piece.Anchored = true
@@ -39,7 +39,7 @@ local function part(model, name, size, cframe, color, material)
 	return piece
 end
 
-local function sphere(model, name, diameter, cframe, color, material)
+local function sphere(model: Model, name: string, diameter: number, cframe: CFrame, color: Color3, material: Enum.Material?)
 	local piece = Instance.new("Part")
 	piece.Name = name
 	piece.Shape = Enum.PartType.Ball
@@ -54,7 +54,7 @@ local function sphere(model, name, diameter, cframe, color, material)
 	return piece
 end
 
-local function wedge(model, name, size, cframe, color, material)
+local function wedge(model: Model, name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material?)
 	local piece = Instance.new("WedgePart")
 	piece.Name = name
 	piece.Anchored = true
@@ -68,7 +68,7 @@ local function wedge(model, name, size, cframe, color, material)
 	return piece
 end
 
-local function cylinder(model, name, size, cframe, color, material)
+local function cylinder(model: Model, name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material?)
 	local piece = part(model, name, size, cframe, color, material)
 	piece.Shape = Enum.PartType.Cylinder
 	return piece
@@ -76,7 +76,7 @@ end
 
 -- Two big cartoon eyes, always in the same place, on every plan. This is the
 -- joke the whole cast shares.
-local function addEyes(model, body, bodyTop, eyeSpacing, eyeSize, forward)
+local function addEyes(model: Model, body: BasePart, bodyTop: Vector3, eyeSpacing: number, eyeSize: number, forward: Vector3?)
 	local face = forward or Vector3.new(0, 0, -1)
 	local origin = bodyTop + face * (eyeSize * 0.9)
 	for side = -1, 1, 2 do
@@ -90,7 +90,7 @@ end
 -- ---------------------------------------------------------------- body plans
 
 -- A round friendly blob: sphere body, two stubby feet, a little fin.
-local function buildBlob(model, entry)
+local function buildBlob(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	local body = sphere(model, "Body", 3.4, CFrame.new(0, 1.9, 0), bodyColor)
 	part(model, "Belly", Vector3.new(2.2, 1.2, 2.0), CFrame.new(0, 1.35, -0.35), accent)
@@ -102,7 +102,7 @@ local function buildBlob(model, entry)
 end
 
 -- A box bird: body, head, beak, two wings, two legs.
-local function buildBird(model, entry)
+local function buildBird(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	local body = part(model, "Body", Vector3.new(2.6, 2.2, 3.4), CFrame.new(0, 1.9, 0), bodyColor)
 	local head = part(model, "Head", Vector3.new(2.0, 1.8, 1.8), CFrame.new(0, 3.5, -0.7), bodyColor)
@@ -118,7 +118,7 @@ local function buildBird(model, entry)
 end
 
 -- A cup character: tapered cup body, lid, straw, and (yes) eyes on the cup.
-local function buildCup(model, entry)
+local function buildCup(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	local body = part(model, "Cup", Vector3.new(2.4, 3.0, 2.4), CFrame.new(0, 1.8, 0), bodyColor)
 	part(model, "CupRim", Vector3.new(2.7, 0.4, 2.7), CFrame.new(0, 3.35, 0), accent)
@@ -132,7 +132,7 @@ local function buildCup(model, entry)
 end
 
 -- A four-legged animal: body, head, two ears, a tail, four legs.
-local function buildAnimal(model, entry)
+local function buildAnimal(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	local body = part(model, "Body", Vector3.new(2.8, 2.0, 3.6), CFrame.new(0, 1.9, 0), bodyColor)
 	local head = part(model, "Head", Vector3.new(2.0, 1.8, 1.8), CFrame.new(0, 3.1, -1.7), bodyColor)
@@ -150,7 +150,7 @@ local function buildAnimal(model, entry)
 end
 
 -- A big brute: heavy torso, low head, two horns, arms.
-local function buildBeast(model, entry)
+local function buildBeast(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	local body = part(model, "Torso", Vector3.new(3.8, 3.0, 3.0), CFrame.new(0, 2.4, 0), bodyColor, Enum.Material.Slate)
 	local head = part(model, "Head", Vector3.new(2.4, 2.0, 2.0), CFrame.new(0, 3.2, -1.9), bodyColor, Enum.Material.Slate)
@@ -170,7 +170,7 @@ end
 -- The bespoke silhouettes. Each one is the shape its name promises.
 local specialBuilders = {}
 
-function specialBuilders.croissant(model, entry)
+function specialBuilders.croissant(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	for i = 1, 5 do
 		local t = (i - 1) / 4
@@ -187,7 +187,7 @@ function specialBuilders.croissant(model, entry)
 	return body, 3.6
 end
 
-function specialBuilders.noodle(model, entry)
+function specialBuilders.noodle(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	local body = part(model, "Body", Vector3.new(1.6, 1.8, 1.6), CFrame.new(0, 1.7, 0), bodyColor)
 	for i = 1, 4 do
@@ -201,7 +201,7 @@ function specialBuilders.noodle(model, entry)
 	return body, 5.2
 end
 
-function specialBuilders.cornetto(model, entry)
+function specialBuilders.cornetto(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	local body = wedge(model, "Cone", Vector3.new(2.2, 3.2, 2.2),
 		CFrame.new(0, 1.7, 0) * CFrame.Angles(0, math.rad(45), math.rad(180)), bodyColor)
@@ -212,7 +212,7 @@ function specialBuilders.cornetto(model, entry)
 	return body, 5.6
 end
 
-function specialBuilders.toast(model, entry)
+function specialBuilders.toast(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	local body = part(model, "Slice", Vector3.new(2.6, 3.0, 1.0), CFrame.new(0, 1.9, 0), bodyColor)
 	part(model, "Crust", Vector3.new(2.8, 0.5, 1.1), CFrame.new(0, 3.5, 0), accent)
@@ -224,7 +224,7 @@ function specialBuilders.toast(model, entry)
 	return body, 4.2
 end
 
-function specialBuilders.cactus(model, entry)
+function specialBuilders.cactus(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	local body = part(model, "Trunk", Vector3.new(1.6, 3.4, 1.6), CFrame.new(0, 2.0, 0), bodyColor, Enum.Material.Grass)
 	part(model, "ArmL", Vector3.new(0.9, 1.8, 0.9), CFrame.new(-1.1, 2.4, 0) * CFrame.Angles(0, 0, math.rad(18)),
@@ -241,7 +241,7 @@ function specialBuilders.cactus(model, entry)
 	return body, 4.4
 end
 
-function specialBuilders.skull(model, entry)
+function specialBuilders.skull(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	local body = sphere(model, "Cranium", 3.2, CFrame.new(0, 2.2, 0), bodyColor, Enum.Material.Marble)
 	part(model, "Jaw", Vector3.new(2.0, 1.0, 1.8), CFrame.new(0, 0.9, -0.2), bodyColor, Enum.Material.Marble)
@@ -259,7 +259,7 @@ function specialBuilders.skull(model, entry)
 	return body, 4.8
 end
 
-function specialBuilders.galaxy(model, entry)
+function specialBuilders.galaxy(model: Model, entry: { bodyColor: Color3, accentColor: Color3 }): (BasePart, number)
 	local bodyColor, accent = entry.bodyColor, entry.accentColor
 	local body = sphere(model, "Core", 3.4, CFrame.new(0, 2.1, 0), bodyColor, Enum.Material.Neon)
 	cylinder(model, "Ring", Vector3.new(0.22, 5.0, 5.0),
@@ -287,7 +287,7 @@ local planBuilders = {
 
 -- Uniformly rescale the model so EVERY axis is at most maxHeight studs.
 -- Triggered when any axis of the model's extents exceeds 8 studs.
-local function clampModelScale(model, maxHeight)
+local function clampModelScale(model: Model, maxHeight: number): number
 	local extents = model:GetExtentsSize()
 	local maxAxis = math.max(extents.X, extents.Y, extents.Z)
 	if maxAxis > 8 then
@@ -316,7 +316,7 @@ end
 	perfectly visible while playing came out missing from every capture. False
 	makes the draw order ordinary, which is what the capture pipeline honours.
 ]]
-local function buildNameTag(model, entry, mutationName, padIndex)
+local function buildNameTag(model: Model, entry: { name: string, rarity: string, moneyPerSecond: number }, mutationName: string?, padIndex: number?): BillboardGui
 	local rarityColor = RarityConfig.colorOf(entry.rarity)
 	local glowColor = RarityConfig.glowOf(entry.rarity)
 	local hasMutation = mutationName and mutationName ~= MutationConfig.plainName
@@ -446,7 +446,7 @@ end
 -- Idle bob. It animates the whole model's pivot, never one part on its own: these
 -- models are welded, so moving a single PrimaryPart drags its welded children
 -- with it and the character tears itself apart.
-local function addIdleBob(model, baseHeight)
+local function addIdleBob(model: Model, baseHeight: number)
 	local primary = model.PrimaryPart
 	if not primary then
 		return
@@ -475,7 +475,7 @@ local function addIdleBob(model, baseHeight)
 	end)
 end
 
-local function addSparkles(model, tint)
+local function addSparkles(model: Model, tint: Color3)
 	local emitterPart = model.PrimaryPart
 	if not emitterPart then
 		return
@@ -501,7 +501,7 @@ end
 
 -- Repaint every part of a built model for a mutation. Kept separate so a thief
 -- or a steal can re-tint without rebuilding.
-function CharacterFactory.applyMutation(model, mutationName)
+function CharacterFactory.applyMutation(model: Model, mutationName: string)
 	local mutation = MutationConfig.get(mutationName)
 	if not mutation.tint then
 		return
@@ -525,7 +525,7 @@ end
 --   carried    true when it hangs over a player's head (no collide, no touch)
 --   scale      uniform scale, default 1
 --   bob        false to defer the idle bob (PlotService parks then starts it)
-function CharacterFactory.build(entry, options)
+function CharacterFactory.build(entry: { name: string, rarity: string, moneyPerSecond: number, bodyPlan: string, bodyColor: Color3, accentColor: Color3, form: string? }, options: { mutation: string?, carried: boolean?, scale: number?, bob: boolean?, padIndex: number? }?)
 	options = options or {}
 	local mutationName = options.mutation or MutationConfig.plainName
 	local scale = options.scale or 1
@@ -571,22 +571,22 @@ function CharacterFactory.build(entry, options)
 	end
 
 	if scale ~= 1 then
-			model:ScaleTo(scale)
-			height *= scale
-			model:SetAttribute("Height", height)
-		end
+		model:ScaleTo(scale)
+		height *= scale
+		model:SetAttribute("Height", height)
+	end
 
-		-- CHARACTER SCALE CAP: clamp every body plan to at most 7 studs tall.
-			-- If any axis of the assembled model exceeds 8 studs, rescale uniformly
-			-- so the largest axis becomes 7. Applies to EVERY body plan so no future
-			-- cast entry can regress.
-		local clampFactor = clampModelScale(model, 7)
-		if clampFactor ~= 1 then
-			height *= clampFactor
-			model:SetAttribute("Height", height)
-		end
+	-- CHARACTER SCALE CAP: clamp every body plan to at most 7 studs tall.
+	-- If any axis of the assembled model exceeds 8 studs, rescale uniformly
+	-- so the largest axis becomes 7. Applies to EVERY body plan so no future
+	-- cast entry can regress.
+	local clampFactor = clampModelScale(model, 7)
+	if clampFactor ~= 1 then
+		height *= clampFactor
+		model:SetAttribute("Height", height)
+	end
 
-		buildNameTag(model, entry, mutationName, options.padIndex or model:GetAttribute("OnPad") or 1)
+	buildNameTag(model, entry, mutationName, options.padIndex or model:GetAttribute("OnPad") or 1)
 
 	if options.bob ~= false then
 		addIdleBob(model, height)
@@ -605,7 +605,7 @@ function CharacterFactory.build(entry, options)
 end
 
 -- A tiny ice block used when the wall or a stun freezes somebody.
-function CharacterFactory.buildIceBlock(size, color)
+function CharacterFactory.buildIceBlock(size: Vector3, color: Color3?): Part
 	local block = Instance.new("Part")
 	block.Name = "IceBlock"
 	block.Size = size
@@ -620,7 +620,7 @@ end
 
 -- Start the idle bob on a model that has already been positioned. PlotService
 -- builds with bob = false, parks the model on its pad, then calls this.
-function CharacterFactory.startIdleBob(model)
+function CharacterFactory.startIdleBob(model: Model)
 	local primary = model.PrimaryPart
 	if not primary then
 		return
@@ -629,7 +629,7 @@ function CharacterFactory.startIdleBob(model)
 end
 
 -- Convenience for UI: a character's effective income with its mutation.
-function CharacterFactory.incomeOf(entry, mutationName)
+function CharacterFactory.incomeOf(entry: { moneyPerSecond: number }, mutationName: string?): number
 	return entry.moneyPerSecond * MutationConfig.multiplierOf(mutationName or MutationConfig.plainName)
 end
 

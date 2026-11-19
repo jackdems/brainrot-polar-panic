@@ -79,12 +79,12 @@ end
 
 CastConfig.count = #CastConfig.cast
 
-function CastConfig.get(name)
+function CastConfig.get(name: string)
 	return CastConfig.byName[name]
 end
 
 -- A character's own body build: the plan plus, for specials, which custom form.
-function CastConfig.bodyPlanOf(entry)
+function CastConfig.bodyPlanOf(entry: { bodyPlan: string, form: string? }?): string
 	if not entry then
 		return "blob"
 	end
@@ -93,7 +93,7 @@ end
 
 -- Pick one character at the given rarity. Falls back down the ladder so a rarity
 -- nobody was written for can never break a hatch.
-function CastConfig.pickAtRarity(rarityName)
+function CastConfig.pickAtRarity(rarityName: string)
 	local bucket = CastConfig.byRarity[rarityName]
 	if bucket and #bucket > 0 then
 		return bucket[math.random(1, #bucket)]
@@ -125,7 +125,7 @@ function CastConfig.sortedByRarity()
 end
 
 -- Every character that exists at one rarity: the collection panel's denominator.
-function CastConfig.countAt(rarityName)
+function CastConfig.countAt(rarityName: string): number
 	return CastConfig.countByRarity[rarityName] or 0
 end
 

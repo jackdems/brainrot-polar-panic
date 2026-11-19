@@ -71,7 +71,7 @@ RarityConfig.rarities = {
 }
 
 -- Colour used by UI and by the name tag. Unknown rarities read as Common.
-function RarityConfig.colorOf(rarityName)
+function RarityConfig.colorOf(rarityName: string): Color3
 	local entry = RarityConfig.rarities[rarityName]
 	if entry then
 		return entry.color
@@ -79,7 +79,7 @@ function RarityConfig.colorOf(rarityName)
 	return RarityConfig.rarities.Common.color
 end
 
-function RarityConfig.textColorOf(rarityName)
+function RarityConfig.textColorOf(rarityName: string): Color3
 	local entry = RarityConfig.rarities[rarityName]
 	if entry then
 		return entry.textColor
@@ -89,7 +89,7 @@ end
 
 -- The brighter tone: neon trim, particle bursts, and the tag stroke so even a
 -- Common label separates from the snow behind it.
-function RarityConfig.glowOf(rarityName)
+function RarityConfig.glowOf(rarityName: string): Color3
 	local entry = RarityConfig.rarities[rarityName]
 	if entry then
 		return entry.glow
@@ -98,7 +98,7 @@ function RarityConfig.glowOf(rarityName)
 end
 
 -- Four letters, for the tight odds line on an egg card.
-function RarityConfig.shortNameOf(rarityName)
+function RarityConfig.shortNameOf(rarityName: string): string
 	local entry = RarityConfig.rarities[rarityName]
 	if entry then
 		return entry.shortName
@@ -106,7 +106,7 @@ function RarityConfig.shortNameOf(rarityName)
 	return "COMM"
 end
 
-function RarityConfig.rankOf(rarityName)
+function RarityConfig.rankOf(rarityName: string): number
 	local entry = RarityConfig.rarities[rarityName]
 	if entry then
 		return entry.rank
@@ -115,12 +115,12 @@ function RarityConfig.rankOf(rarityName)
 end
 
 -- True when `rarityName` sits at or above `floorName` on the ladder.
-function RarityConfig.atLeast(rarityName, floorName)
+function RarityConfig.atLeast(rarityName: string, floorName: string): boolean
 	return RarityConfig.rankOf(rarityName) >= RarityConfig.rankOf(floorName)
 end
 
 -- The highest rarity a hatch can reach out of a weight table (used by Egg Luck).
-function RarityConfig.topOf(weights)
+function RarityConfig.topOf(weights: {[string]: number}): string?
 	local best, bestRank = nil, -1
 	for rarityName in pairs(weights) do
 		local rank = RarityConfig.rankOf(rarityName)
@@ -132,7 +132,7 @@ function RarityConfig.topOf(weights)
 end
 
 -- The lowest rarity present in a weight table (Egg Luck drains this one first).
-function RarityConfig.bottomOf(weights)
+function RarityConfig.bottomOf(weights: {[string]: number}): string?
 	local worst, worstRank = nil, math.huge
 	for rarityName in pairs(weights) do
 		local rank = RarityConfig.rankOf(rarityName)
@@ -144,7 +144,7 @@ function RarityConfig.bottomOf(weights)
 end
 
 -- One line of "COMM 70% · UNCO 25%" for an egg billboard or a shop card.
-function RarityConfig.oddsLine(weights)
+function RarityConfig.oddsLine(weights: {[string]: number}?): string
 	local parts = {}
 	for _, rarityName in ipairs(RarityConfig.order) do
 		local weight = weights and weights[rarityName]

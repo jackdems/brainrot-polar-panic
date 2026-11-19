@@ -10,32 +10,32 @@ RebirthConfig.baseCost = 25000
 RebirthConfig.baseMultiplier = 1
 
 -- Rebirth N (0-indexed: your first rebirth is N = 0) costs 25000 * 2^N.
-function RebirthConfig.cost(rebirths)
+function RebirthConfig.cost(rebirths: number?): number
 	return RebirthConfig.baseCost * (2 ^ (rebirths or 0))
 end
 
 -- Income multiplier after `rebirths` rebirths: x2 each time.
-function RebirthConfig.multiplier(rebirths)
+function RebirthConfig.multiplier(rebirths: number?): number
 	return RebirthConfig.baseMultiplier * (2 ^ (rebirths or 0))
 end
 
-function RebirthConfig.canRebirth(rebirths)
+function RebirthConfig.canRebirth(rebirths: number?): boolean
 	return (rebirths or 0) < RebirthConfig.maxRebirths
 end
 
 -- A rebirth buys exactly one extra pad socket (on top of the free six).
-function RebirthConfig.padsFor(rebirths)
+function RebirthConfig.padsFor(rebirths: number?): number
 	return 6 + (rebirths or 0)
 end
 
 RebirthConfig.galaxyEggRebirth = 1
 
-function RebirthConfig.galaxyUnlocked(rebirths)
+function RebirthConfig.galaxyUnlocked(rebirths: number?): boolean
 	return (rebirths or 0) >= RebirthConfig.galaxyEggRebirth
 end
 
 -- The whole ladder as rows for the panel: {index, multiplier, cost}.
-function RebirthConfig.ladder()
+function RebirthConfig.ladder(): {{ index: number, multiplier: number, cost: number }}
 	local rows = {}
 	for index = 1, RebirthConfig.maxRebirths do
 		table.insert(rows, {
@@ -48,7 +48,7 @@ function RebirthConfig.ladder()
 end
 
 -- "x4" / "$25,000" - the panel and the HUD both want these strings.
-function RebirthConfig.describeCost(rebirths)
+function RebirthConfig.describeCost(rebirths: number?): string
 	local cost = RebirthConfig.cost(rebirths)
 	if cost >= 1e6 then
 		return string.format("$%.1fM", cost / 1e6)
